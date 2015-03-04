@@ -1,7 +1,7 @@
 native
 ======
 
-This is my library of stuff that I use when writing C++ programs, mostly for Android but it's all written to enable easy portability between Android, Linux, Windows and MacOSX. The code is part ugly, part inconsistent but quite useful.
+This is library of stuff from hrydgard that , mostly for Android but it's all written to enable easy portability between Android, Linux, Windows and MacOSX. The code is part ugly, part inconsistent but quite useful.
 
 Features
 --------
