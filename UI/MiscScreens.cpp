@@ -474,7 +474,7 @@ void CreditsScreen::render() {
 		"",
 		"",
 		c->T("created", "Created by"),
-		"MOStudios",
+		"MOStudios an android fork from PPSSPP",
 		"An opensource App for Android",
 		"Based on PPSSPP GPLV2 or later license",
 		c->T("contributors", "Contributors:"),
@@ -483,7 +483,7 @@ void CreditsScreen::render() {
 		"",
 		"",
 		c->T("specialthanks", "Special thanks to:"),
-        "hrydgard",
+                "hrydgard",
 		"Xana",
 		"",
 		c->T("this translation by", ""),   // Empty string as this is the original :)
