@@ -1,4 +1,4 @@
-// Copyright (c) 2012- PPSSPP Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 // If not, see http://www.gnu.org/licenses/
 
 // Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+// 
 
 #pragma once
 
@@ -250,12 +250,9 @@ WaitBeginEndCallbackResult WaitEndCallback(SceUID threadID, SceUID prevCallbackI
 		return WAIT_CB_SUCCESS;
 	}
 
-	WaitInfoType waitData;
+	
 	auto result = WaitEndCallback<KO, waitType>(threadID, prevCallbackId, waitTimer, TryUnlock, waitData, ko->waitingThreads, ko->pausedWaits);
-	if (result == WAIT_CB_RESUMED_WAIT) {
-		// TODO: Should this not go at the end?
-		ko->waitingThreads.push_back(waitData);
-	}
+	
 	return result;
 }
 
