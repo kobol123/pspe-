@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2012- PPSSPP Project.
+﻿// Copyright (c) 2015- PPSSPP Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 // If not, see http://www.gnu.org/licenses/
 
 // Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+// 
 
 #include <set>
 #include <algorithm>
@@ -698,13 +698,14 @@ void FramebufferManager::ResizeFramebufFBO(VirtualFramebuffer *vfb, u16 w, u16 h
 	textureCache_->ForgetLastTexture();
 	fbo_unbind();
 
-	if (!useBufferedRendering_) {
+	//Force the restart may cause glitches separated from the actual buffered render
+	//and we need a restart at this point
 		if (vfb->fbo) {
 			fbo_destroy(vfb->fbo);
 			vfb->fbo = 0;
 		}
 		return;
-	}
+	
 
 	vfb->fbo = fbo_create(vfb->renderWidth, vfb->renderHeight, 1, true, (FBOColorDepth)vfb->colorDepth);
 	if (old.fbo) {
