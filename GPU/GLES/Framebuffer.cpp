@@ -1272,7 +1272,7 @@ void FramebufferManager::ReadFramebufferToMemory(VirtualFramebuffer *vfb, bool s
 
 // TODO: If dimensions are the same, we can use glCopyImageSubData.
 void FramebufferManager::BlitFramebuffer(VirtualFramebuffer *dst, int dstX, int dstY, VirtualFramebuffer *src, int srcX, int srcY, int w, int h, int bpp, bool flip) {
-	if (!dst->fbo || !src->fbo || !useBufferedRendering_) {
+	if (!dst->fbo || !src->fbo || useBufferedRendering_) {
 		// This can happen if they recently switched from non-buffered.
 		fbo_unbind();
 		return;
