@@ -1,4 +1,4 @@
-// Copyright (c) 2012- PPSSPP Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 // If not, see http://www.gnu.org/licenses/
 
 // Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+// 
 
 #include "base/logging.h"
 #include "gfx_es2/gl_state.h"
@@ -771,8 +771,7 @@ void GLES_GPU::Execute_Prim(u32 op, u32 diff) {
 	u32 count = data & 0xFFFF;
 	GEPrimitiveType prim = static_cast<GEPrimitiveType>(data >> 16);
 
-	if (count == 0)
-		return;
+	
 
 	// Discard AA lines as we can't do anything that makes sense with these anyway. The SW plugin might, though.
 
