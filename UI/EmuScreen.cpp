@@ -1,4 +1,4 @@
-// Copyright (c) 2012- PPSSPP Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 // If not, see http://www.gnu.org/licenses/
 
 // Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+// 
 
 #include "android/app-android.h"
 #include "base/display.h"
@@ -705,9 +705,8 @@ void EmuScreen::render() {
 	if (invalid_)
 		return;
 
-	bool useBufferedRendering = g_Config.iRenderingMode != FB_NON_BUFFERED_MODE;
-	if (useBufferedRendering && g_Config.iGPUBackend == GPU_BACKEND_OPENGL)
-		fbo_unbind();
+	
+	
 
 	screenManager()->getUIContext()->RebindTexture();
 	Thin3DContext *thin3d = screenManager()->getThin3DContext();
