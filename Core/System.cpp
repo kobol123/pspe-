@@ -1,4 +1,4 @@
-// Copyright (C) 2012 PPSSPP Project
+// Copyright (C) 2015 PSPe+ Project
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 // If not, see http://www.gnu.org/licenses/
 
 // Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+// 
 
 #ifdef _WIN32
 #include "Common/CommonWindows.h"
@@ -320,13 +320,7 @@ bool PSP_InitStart(const CoreParameter &coreParam, std::string *error_string) {
 		return false;
 	}
 
-#if defined(_WIN32) && defined(_M_X64)
-	INFO_LOG(BOOT, "PSPTurbo %s Windows 64 bit", PPSSPP_GIT_VERSION);
-#elif defined(_WIN32) && !defined(_M_X64)
-	INFO_LOG(BOOT, "PSPTurbo %s Windows 32 bit", PPSSPP_GIT_VERSION);
-#else
-	INFO_LOG(BOOT, "PSPTurbo %s", PPSSPP_GIT_VERSION);
-#endif
+
 	coreParameter = coreParam;
 	coreParameter.errorString = "";
 	pspIsIniting = true;
@@ -443,6 +437,8 @@ void PSP_RunLoopUntil(u64 globalticks) {
 				gpu->RunEventsUntil(CoreTiming::GetTicks() + msToCycles(1000));
 				if (coreState != CORE_RUNNING) {
 					CPU_WaitStatus(cpuThreadReplyCond, &CPU_IsReady);
+					
+					gpu->SyncThread(true); //what about syncing now the Thread with gpu...
 				}
 			}
 		} else {
@@ -486,73 +482,4 @@ std::string GetSysDirectory(PSPDirectories directoryType) {
 	}
 }
 
-#if defined(_WIN32)
-// Run this at startup time. Please use GetSysDirectory if you need to query where folders are.
-void InitSysDirectories() {
-	if (!g_Config.memCardDirectory.empty() && !g_Config.flash0Directory.empty())
-		return;
 
-	const std::string path = File::GetExeDirectory();
-
-	// Mount a filesystem
-	g_Config.flash0Directory = path + "flash0/";
-
-	// Detect the "My Documents"(XP) or "Documents"(on Vista/7/8) folder.
-	wchar_t myDocumentsPath[MAX_PATH];
-	const HRESULT result = SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, myDocumentsPath);
-	const std::string myDocsPath = ConvertWStringToUTF8(myDocumentsPath) + "/PSPTurbo/";
-
-	const std::string installedFile = path + "installed.txt";
-	const bool installed = File::Exists(installedFile);
-
-	// If installed.txt exists(and we can determine the Documents directory)
-	if (installed && (result == S_OK))	{
-		std::ifstream inputFile(ConvertUTF8ToWString(installedFile));
-
-		if (!inputFile.fail() && inputFile.is_open()) {
-			std::string tempString;
-
-			std::getline(inputFile, tempString);
-
-			// Skip UTF-8 encoding bytes if there are any. There are 3 of them.
-			if (tempString.substr(0, 3) == "\xEF\xBB\xBF")
-				tempString = tempString.substr(3);
-
-			g_Config.memCardDirectory = tempString;
-		}
-		inputFile.close();
-
-		// Check if the file is empty first, before appending the slash.
-		if (g_Config.memCardDirectory.empty())
-			g_Config.memCardDirectory = myDocsPath;
-
-		size_t lastSlash = g_Config.memCardDirectory.find_last_of("/");
-		if (lastSlash != (g_Config.memCardDirectory.length() - 1))
-			g_Config.memCardDirectory.append("/");
-	} else {
-		g_Config.memCardDirectory = path + "memstick/";
-	}
-
-	// Create the memstickpath before trying to write to it, and fall back on Documents yet again
-	// if we can't make it.
-	if (!File::Exists(g_Config.memCardDirectory)) {
-		if (!File::CreateDir(g_Config.memCardDirectory))
-			g_Config.memCardDirectory = myDocsPath;
-	}
-
-	const std::string testFile = "/_writable_test.$$$";
-
-	// If any directory is read-only, fall back to the Documents directory.
-	// We're screwed anyway if we can't write to Documents, or can't detect it.
-	if (!File::CreateEmptyFile(g_Config.memCardDirectory + testFile))
-		g_Config.memCardDirectory = myDocsPath;
-
-	// Clean up our mess.
-	if (File::Exists(g_Config.memCardDirectory + testFile))
-		File::Delete(g_Config.memCardDirectory + testFile);
-
-	if (g_Config.currentDirectory.empty()) {
-		g_Config.currentDirectory = GetSysDirectory(DIRECTORY_GAME);
-	}
-}
-#endif
