@@ -1,4 +1,4 @@
-// Copyright (c) 2012- PPSSPP Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 // If not, see http://www.gnu.org/licenses/
 
 // Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+// 
 
 #include <algorithm>
 #include <string>
@@ -2095,9 +2095,20 @@ int sceKernelFreeTlspl(SceUID uid)
 
 				// Otherwise, if there was a thread waiting, we were full, so this newly freed one is theirs.
 				// TODO: Is the block wiped or anything?
+				
+				
+				
+				// No need to wait while got error!!!!!!
+				
+				if (freeBlock == error) continue;
+				
 				tls->usage[freeBlock] = waitingThreadID;
 				__KernelResumeThreadFromWait(waitingThreadID, freeBlock);
 				// No need to continue or free it, we're done.
+				
+			        
+				
+				
 				return 0;
 			}
 
