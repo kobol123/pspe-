@@ -2100,7 +2100,7 @@ int sceKernelFreeTlspl(SceUID uid)
 				
 				// No need to wait while got error!!!!!!
 				
-				if (freeBlock == error) continue;
+				if (error) continue;
 				
 				tls->usage[freeBlock] = waitingThreadID;
 				__KernelResumeThreadFromWait(waitingThreadID, freeBlock);
