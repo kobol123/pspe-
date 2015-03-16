@@ -1,4 +1,4 @@
-// Copyright (c) 2012- PPSSPP Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 // If not, see http://www.gnu.org/licenses/
 
 // Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+// 
 
 #ifdef _WIN32
 #define SHADERLOG
@@ -553,6 +553,14 @@ void LinkedShader::UpdateUniforms(u32 vertType) {
 		if (allDirty) {
 			// Set them all with one call
 			glUniformMatrix4fv(u_bone, numBones, GL_FALSE, allBones);
+			
+			//need to flush shader
+			
+			glDeleteShader(shader);
+			allDirty = false;
+			
+			
+			
 		} else {
 			// Set them one by one. Could try to coalesce two in a row etc but too lazy.
 			for (int i = 0; i < numBones; i++) {
