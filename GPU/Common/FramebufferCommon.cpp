@@ -1,4 +1,4 @@
-// Copyright (c) 2012- PPSSPP Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 // If not, see http://www.gnu.org/licenses/
 
 // Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+// 
 
 #include <algorithm>
 #include "Common/Common.h"
@@ -561,6 +561,14 @@ void FramebufferManagerCommon::FindTransferFramebuffers(VirtualFramebuffer *&dst
 		const u32 vfb_byteStride = vfb->fb_stride * vfb_bpp;
 		const u32 vfb_byteWidth = vfb->width * vfb_bpp;
 
+
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+         /////               THIS IS EXTREMELY NOISIE BUT CAN RESULT GOOD WITHOUT ALL THIS CHECKS AND MAY SIMPLIFY   MAY RESULT A DEFORMED FB////////////////
+
+
+
 		// These heuristics are a bit annoying.
 		// The goal is to avoid using GPU block transfers for things that ought to be memory.
 		// Maybe we should even check for textures at these places instead?
@@ -571,48 +579,48 @@ void FramebufferManagerCommon::FindTransferFramebuffers(VirtualFramebuffer *&dst
 			const u32 yOffset = byteOffset / byteStride;
 			// Some games use mismatching bitdepths.  But make sure the stride matches.
 			// If it doesn't, generally this means we detected the framebuffer with too large a height.
-			bool match = yOffset < dstYOffset;
-			if (match && vfb_byteStride != byteStride) {
+	//		bool match = yOffset < dstYOffset;
+		//	if (match && vfb_byteStride != byteStride) {
 				// Grand Knights History copies with a mismatching stride but a full line at a time.
 				// Makes it hard to detect the wrong transfers in e.g. God of War.
-				if (width != dstStride || (byteStride * height != vfb_byteStride && byteStride * height != vfb_byteWidth)) {
-					match = false;
-				} else {
-					dstWidth = byteStride * height / vfb_bpp;
-					dstHeight = 1;
-				}
-			} else if (match) {
-				dstWidth = width;
-				dstHeight = height;
-			}
-			if (match) {
+		//		if (width != dstStride || (byteStride * height != vfb_byteStride && byteStride * height != vfb_byteWidth)) {
+		//			match = false;
+		//		} else {
+		//			dstWidth = byteStride * height / vfb_bpp;
+		//			dstHeight = 1;
+		//		}
+		//	} else if (match) {
+		//		dstWidth = width;
+		//		dstHeight = height;
+		//	}
+		//	if (match) {
 				dstYOffset = yOffset;
 				dstXOffset = (byteOffset / bpp) % dstStride;
 				dstBuffer = vfb;
-			}
-		}
-		if (vfb_address <= srcBasePtr && srcBasePtr < vfb_address + vfb_size) {
-			const u32 byteOffset = srcBasePtr - vfb_address;
-			const u32 byteStride = srcStride * bpp;
-			const u32 yOffset = byteOffset / byteStride;
-			bool match = yOffset < srcYOffset;
-			if (match && vfb_byteStride != byteStride) {
-				if (width != srcStride || (byteStride * height != vfb_byteStride && byteStride * height != vfb_byteWidth)) {
-					match = false;
-				} else {
-					srcWidth = byteStride * height / vfb_bpp;
-					srcHeight = 1;
-				}
-			} else if (match) {
-				srcWidth = width;
-				srcHeight = height;
-			}
-			if (match) {
-				srcYOffset = yOffset;
-				srcXOffset = (byteOffset / bpp) % srcStride;
-				srcBuffer = vfb;
-			}
-		}
+		//	}
+	//	}
+	//	if (vfb_address <= srcBasePtr && srcBasePtr < vfb_address + vfb_size) {
+	//		const u32 byteOffset = srcBasePtr - vfb_address;
+	//		const u32 byteStride = srcStride * bpp;
+	//		const u32 yOffset = byteOffset / byteStride;
+	//		bool match = yOffset < srcYOffset;
+	//		if (match && vfb_byteStride != byteStride) {
+	//			if (width != srcStride || (byteStride * height != vfb_byteStride && byteStride * height != vfb_byteWidth)) {
+	//				match = false;
+	//			} else {
+	//				srcWidth = byteStride * height / vfb_bpp;
+	//				srcHeight = 1;
+	//			}
+	//		} else if (match) {
+	//			srcWidth = width;
+	//			srcHeight = height;
+	//		}
+	//		if (match) {
+	//			srcYOffset = yOffset;
+	//			srcXOffset = (byteOffset / bpp) % srcStride;
+	//			srcBuffer = vfb;
+	//		}
+	//	}
 	}
 
 	if (dstYOffset != (u32)-1) {
