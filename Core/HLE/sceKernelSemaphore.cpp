@@ -332,15 +332,15 @@ int sceKernelSignalSema(SceUID id, int signal)
 
 
 
-///retry:
-///		for (auto iter = s->waitingThreads.begin(), end = s->waitingThreads.end(); iter != end; ++iter)
-///		{
+retry:
+		for (auto iter = s->waitingThreads.begin(), end = s->waitingThreads.end(); iter != end; ++iter)
+		{
 //			if (__KernelUnlockSemaForThread(s, *iter, error, 0, wokeThreads))
 //			{
-///				s->waitingThreads.erase(iter);
-//				goto retry;
+				s->waitingThreads.erase(iter);
+				goto retry;
 //			}
-//		}
+		}
 
 		if (wokeThreads)
 			hleReSchedule("semaphore signaled");
