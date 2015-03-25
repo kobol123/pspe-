@@ -1,4 +1,4 @@
-// Copyright (c) 2012- PPSSPP Project.
+// Copyright (c) 2012- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 // If not, see http://www.gnu.org/licenses/
 
 // Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+//
 
 #include <algorithm>
 #include "Core/HLE/HLE.h"
@@ -307,15 +307,22 @@ int sceKernelSignalSema(SceUID id, int signal)
 			std::stable_sort(s->waitingThreads.begin(), s->waitingThreads.end(), __KernelThreadSortPriority);
 
 		bool wokeThreads = false;
-retry:
-		for (auto iter = s->waitingThreads.begin(), end = s->waitingThreads.end(); iter != end; ++iter)
-		{
-			if (__KernelUnlockSemaForThread(s, *iter, error, 0, wokeThreads))
-			{
-				s->waitingThreads.erase(iter);
-				goto retry;
-			}
-		}
+
+
+
+///Why removing threads with no events? What a loop.........
+
+
+
+///retry:
+///		for (auto iter = s->waitingThreads.begin(), end = s->waitingThreads.end(); iter != end; ++iter)
+///		{
+//			if (__KernelUnlockSemaForThread(s, *iter, error, 0, wokeThreads))
+//			{
+///				s->waitingThreads.erase(iter);
+//				goto retry;
+//			}
+//		}
 
 		if (wokeThreads)
 			hleReSchedule("semaphore signaled");
