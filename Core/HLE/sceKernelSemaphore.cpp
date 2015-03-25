@@ -131,9 +131,27 @@ bool __KernelUnlockSemaForThread(Semaphore *s, SceUID threadID, u32 &error, int 
 			cyclesLeft = 0;
 		Memory::Write_U32((u32) cyclesToUs(cyclesLeft), timeoutPtr);
 	}
+	
+	
+	
+////// keep clear before resume.
 
+
+
+retry: 
+	for (auto iter = s->waitingThreads.begin(), end = s->waitingThreads.end(); iter != end; ++iter) 
+	{ 
+			s->waitingThreads.erase(iter); 
+				goto retry; 
+			} 
+		} 
 	__KernelResumeThreadFromWait(threadID, result);
 	wokeThreads = true;
+	
+	
+
+	
+	
 	return true;
 }
 
