@@ -19,7 +19,7 @@ endif()
 if(EXISTS ${GIT_VERSION_FILE})
 	# Don't update if marked not to update.
 	file(STRINGS ${GIT_VERSION_FILE} match
-		REGEX "PSPE_GIT_VERSION_NO_UPDATE = 1")
+		REGEX "PPSSPP_GIT_VERSION_NO_UPDATE = 1")
 	if(NOT ${match} EQUAL "")
 		set(GIT_VERSION_UPDATE "0")
 	endif()
@@ -33,9 +33,9 @@ if(EXISTS ${GIT_VERSION_FILE})
 endif()
 
 set(code_string "// This is a generated file.\n\n"
-	"const char *PSPE_GIT_VERSION = \"${GIT_VERSION}\"\;\n\n"
+	"const char *PSP_GIT_VERSION = \"${GIT_VERSION}\"\;\n\n"
 	"// If you don't want this file to update/recompile, change to 1.\n"
-	"#define PSPE_GIT_VERSION_NO_UPDATE 0\n")
+	"#define PSP_GIT_VERSION_NO_UPDATE 0\n")
 
 if ("${GIT_VERSION_UPDATE}" EQUAL "1")
 	file(WRITE ${GIT_VERSION_FILE} ${code_string})

@@ -1,4 +1,4 @@
-// Copyright (c) 2015 - PSPe+ Project.
+﻿// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,8 +12,7 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official git repository and contact information can be found at
-//
+
 
 #include <algorithm>
 
@@ -36,6 +35,7 @@
 #include "Core/Host.h"
 #include "Core/System.h"
 #include "Core/MIPS/JitCommon/JitCommon.h"
+#include "Core/MIPS/JitCommon/NativeJit.h"
 #include "Core/HLE/sceUtility.h"
 #include "Common/CPUDetect.h"
 #include "Common/FileUtil.h"
@@ -70,7 +70,7 @@ static const uint32_t colors[4] = {
 };
 
 void DrawBackground(UIContext &dc, float alpha = 1.0f) {
-
+	
 #ifdef GOLD
 	img = I_BG_GOLD;
 #endif
@@ -118,12 +118,14 @@ void HandleCommonMessages(const char *message, const char *value, ScreenManager 
 }
 
 void UIScreenWithBackground::DrawBackground(UIContext &dc) {
-	
+
 	dc.Flush();
 }
 
 void UIScreenWithGameBackground::DrawBackground(UIContext &dc) {
-	DrawGameBackground(dc, gamePath_);
+
+		DrawGameBackground(dc, gamePath_);
+
 }
 
 void UIDialogScreenWithGameBackground::DrawBackground(UIContext &dc) {
@@ -132,9 +134,9 @@ void UIDialogScreenWithGameBackground::DrawBackground(UIContext &dc) {
 
 void UIScreenWithBackground::sendMessage(const char *message, const char *value) {
 	HandleCommonMessages(message, value, screenManager());
-	I18NCategory *de = GetI18NCategory("Developer");
+	I18NCategory *dev = GetI18NCategory("Developer");
 	if (!strcmp(message, "language screen")) {
-		auto langScreen = new NewLanguageScreen(de->T("Language"));
+		auto langScreen = new NewLanguageScreen(dev->T("Language"));
 		langScreen->OnChoice.Handle(this, &UIScreenWithBackground::OnLanguageChange);
 		screenManager()->push(langScreen);
 	}
@@ -163,11 +165,13 @@ void UIDialogScreenWithBackground::DrawBackground(UIContext &dc) {
 	dc.Flush();
 }
 
+
+
 void UIDialogScreenWithBackground::sendMessage(const char *message, const char *value) {
 	HandleCommonMessages(message, value, screenManager());
-	I18NCategory *de = GetI18NCategory("Developer");
+	I18NCategory *dev = GetI18NCategory("Developer");
 	if (!strcmp(message, "language screen")) {
-		auto langScreen = new NewLanguageScreen(de->T("Language"));
+		auto langScreen = new NewLanguageScreen(dev->T("Language"));
 		langScreen->OnChoice.Handle(this, &UIDialogScreenWithBackground::OnLanguageChange);
 		screenManager()->push(langScreen);
 	} else if (!strcmp(message, "window minimized")) {
@@ -181,9 +185,9 @@ void UIDialogScreenWithBackground::sendMessage(const char *message, const char *
 
 PromptScreen::PromptScreen(std::string message, std::string yesButtonText, std::string noButtonText, std::function<void(bool)> callback)
 	: message_(message), callback_(callback) {
-		I18NCategory *d = GetI18NCategory("Dialog");
-		yesButtonText_ = d->T(yesButtonText.c_str());
-		noButtonText_ = d->T(noButtonText.c_str());
+		I18NCategory *di = GetI18NCategory("Dialog");
+		yesButtonText_ = di->T(yesButtonText.c_str());
+		noButtonText_ = di->T(noButtonText.c_str());
 }
 
 void PromptScreen::CreateViews() {
@@ -230,7 +234,7 @@ PostProcScreen::PostProcScreen(const std::string &title) : ListPopupScreen(title
 	for (int i = 0; i < (int)shaders_.size(); i++) {
 		if (shaders_[i].section == g_Config.sPostShaderName)
 			selected = i;
-		items.push_back(ps->T(shaders_[i].name.c_str()));
+		items.push_back(ps->T(shaders_[i].section.c_str()));
 	}
 	adaptor_ = UI::StringVectorListAdaptor(items, selected);
 }
@@ -262,6 +266,10 @@ NewLanguageScreen::NewLanguageScreen(const std::string &title) : ListPopupScreen
 #ifndef _WIN32
 		// ar_AE only works on Windows.
 		if (tempLangs[i].name.find("ar_AE") != std::string::npos) {
+			continue;
+		}
+		// Farsi also only works on Windows.
+		if (tempLangs[i].name.find("fa_IR") != std::string::npos) {
 			continue;
 		}
 #endif
@@ -311,7 +319,7 @@ void NewLanguageScreen::OnCompleted(DialogResult result) {
 	bool iniLoadedSuccessfully = false;
 	// Allow the lang directory to be overridden for testing purposes (e.g. Android, where it's hard to 
 	// test new languages without recompiling the entire app, which is a hassle).
-	const std::string langOverridePath = g_Config.memCardDirectory + "PSP/SYSTEM/lang/";
+	const std::string langOverridePath = g_Config.memStickDirectory + "PSP/SYSTEM/lang/";
 
 	// If we run into the unlikely case that "lang" is actually a file, just use the built-in translations.
 	if (!File::Exists(langOverridePath) || !File::IsDirectory(langOverridePath))
@@ -387,20 +395,20 @@ void LogoScreen::render() {
 
 	::DrawBackground(dc, alpha);
 
-	I18NCategory *c = GetI18NCategory("PSPe+ Credits");
+	I18NCategory *cr = GetI18NCategory("PSPCredits");
 	char temp[256];
-	snprintf(temp, sizeof(temp), "%s MOStudios", c->T("created", "Created by"));
+	snprintf(temp, sizeof(temp), "%s MOStudios", cr->T("created", "Created by"));
 
 
-	
-	dc.Draw()->SetFontScale(1.0f, 1.0f);
-	dc.SetFontStyle(dc.theme->uiFont);
-	dc.DrawText(temp, bounds.centerX(), bounds.centerY() + 40, colorAlpha(0xFFFFFFFF, alphaText), ALIGN_CENTER);
-	dc.DrawText(c->T("", ""), bounds.centerX(), bounds.centerY() + 70, colorAlpha(0xFFFFFFFF, alphaText), ALIGN_CENTER);
-	dc.DrawText("", bounds.centerX(), yres / 2 + 130, colorAlpha(0xFFFFFFFF, alphaText), ALIGN_CENTER);
-	if (boot_filename.size()) {
-		ui_draw2d.DrawTextShadow(UBUNTU24, boot_filename.c_str(), bounds.centerX(), bounds.centerY() + 180, colorAlpha(0xFFFFFFFF, alphaText), ALIGN_CENTER);
-	}
+
+		dc.Draw()->SetFontScale(1.0f, 1.0f);
+		dc.SetFontStyle(dc.theme->uiFont);
+		dc.DrawText(temp, bounds.centerX(), bounds.centerY() + 40, colorAlpha(0xFFFFFFFF, alphaText), ALIGN_CENTER);
+		dc.DrawText(cr->T("", ""), bounds.centerX(), bounds.centerY() + 70, colorAlpha(0xFFFFFFFF, alphaText), ALIGN_CENTER);
+		dc.DrawText("", bounds.centerX(), yres / 2 + 130, colorAlpha(0xFFFFFFFF, alphaText), ALIGN_CENTER);
+		if (boot_filename.size()) {
+			ui_draw2d.DrawTextShadow(UBUNTU24, boot_filename.c_str(), bounds.centerX(), bounds.centerY() + 180, colorAlpha(0xFFFFFFFF, alphaText), ALIGN_CENTER);
+		}
 
 #ifdef _WIN32
 	dc.DrawText(screenManager()->getThin3DContext()->GetInfoString(T3DInfo::APINAME), bounds.centerX(), bounds.y2() - 100, colorAlpha(0xFFFFFFFF, alphaText), ALIGN_CENTER);
@@ -412,14 +420,19 @@ void LogoScreen::render() {
 
 void CreditsScreen::CreateViews() {
 	using namespace UI;
-	I18NCategory *d = GetI18NCategory("Dialog");
-	I18NCategory *c = GetI18NCategory("PSPe+ Credits");
+	I18NCategory *di = GetI18NCategory("Dialog");
+	I18NCategory *cr = GetI18NCategory("PSPCredits");
 
 	root_ = new AnchorLayout(new LayoutParams(FILL_PARENT, FILL_PARENT));
-	Button *back = root_->Add(new Button(d->T("Back"), new AnchorLayoutParams(260, 64, NONE, NONE, 10, 10, false)));
+	Button *back = root_->Add(new Button(di->T("Back"), new AnchorLayoutParams(260, 64, NONE, NONE, 10, 10, false)));
 	back->OnClick.Handle(this, &CreditsScreen::OnOK);
 	root_->SetDefaultFocusView(back);
 
+#ifdef GOLD
+	root_->Add(new ImageView(I_ICONGOLD, IS_DEFAULT, new AnchorLayoutParams(100, 64, 10, 10, NONE, NONE, false)));
+#else
+
+#endif
 }
 
 UI::EventReturn CreditsScreen::OnSupport(UI::EventParams &e) {
@@ -443,8 +456,8 @@ UI::EventReturn CreditsScreen::OnForums(UI::EventParams &e) {
 }
 
 UI::EventReturn CreditsScreen::OnShare(UI::EventParams &e) {
-	I18NCategory *c = GetI18NCategory("PSPe+ Credits");
-	System_SendMessage("sharetext", c->T("CheckOutPSPe+", "Check out PSPe+ , the awesome PSP emulator"));
+	I18NCategory *cr = GetI18NCategory("PSPe+ Credits");
+	System_SendMessage("sharetext", cr->T("CheckOutPSPe+", "Check out PSPe+, the awesome PSP emulator: http://www.ppsspp.org/"));
 	return UI::EVENT_DONE;
 }
 
@@ -465,39 +478,38 @@ void CreditsScreen::update(InputState &input_state) {
 void CreditsScreen::render() {
 	UIScreen::render();
 
-	I18NCategory *c = GetI18NCategory("PSPe+ Credits");
+	I18NCategory *cr = GetI18NCategory("PSPe+ Credits");
 
 	const char * credits[] = {
 		"PSPe+",
 		"",
-		c->T("title", "A fast and portable PSP emulator"),
+		cr->T("title", "A fast and portable PSP emulator"),
 		"",
 		"",
-		c->T("created", "Created by"),
-		"MOStudios an android fork from PPSSPP",
+		cr->T("created", "Created by"),
+		"MOStudios",
 		"An opensource App for Android",
 		"Based on PPSSPP GPLV2 or later license",
-		c->T("contributors", "Contributors:"),
+		cr->T("contributors", "Contributors:"),
 
 		"kobol",
 		"",
 		"",
-		c->T("specialthanks", "Special thanks to:"),
-                "hrydgard",
+		cr->T("specialthanks", "Special thanks to:"),
+        "hrydgard",
 		"Xana",
+		cr->T("this translation by", ""),   // Empty string as this is the original :)
+		cr->T("translators1", ""),
+		cr->T("translators2", ""),
+		cr->T("translators3", ""),
+		cr->T("translators4", ""),
+		cr->T("translators5", ""),
+		cr->T("translators6", ""),
 		"",
-		c->T("this translation by", ""),   // Empty string as this is the original :)
-		c->T("translators1", ""),
-		c->T("translators2", ""),
-		c->T("translators3", ""),
-		c->T("translators4", ""),
-		c->T("translators5", ""),
-		c->T("translators6", ""),
-		"",
-		c->T("written", "Written in C++ for speed and portability"),
+		cr->T("written", "Written in C++ for speed and portability"),
 		"",
 		"",
-		c->T("tools", "Free tools used:"),
+		cr->T("tools", "Free tools used:"),
 #ifdef ANDROID
 		"Android SDK + NDK",
 #elif defined(BLACKBERRY)
@@ -514,21 +526,21 @@ void CreditsScreen::render() {
 		"PSP SDK",
 		"",
 		"",
-		c->T("website", ""),
+		cr->T("website", ""),
 		"",
-		c->T("list", ""),
-		"",
-		"",
-
+		cr->T("list", ""),
 		"",
 		"",
-		c->T("info1", "PSPe+ is only intended to play games you own."),
-		c->T("info2", "Please make sure that you own the rights to any games"),
-		c->T("info3", "you play by owning the UMD or by buying the digital"),
-		c->T("info4", "download from the PSN store on your real PSP."),
 		"",
 		"",
-		c->T("info5", "PSP is a trademark by Sony, Inc."),
+		"",
+		cr->T("info1", "PSPe+ is only intended to play games you own."),
+		cr->T("info2", "Please make sure that you own the rights to any games"),
+		cr->T("info3", "you play by owning the UMD or by buying the digital"),
+		cr->T("info4", "download from the PSN store on your real PSP."),
+		"",
+		"",
+		cr->T("info5", "PSP is a trademark by Sony, Inc."),
 	};
 
 

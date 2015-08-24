@@ -47,6 +47,8 @@ enum {
 	VIRTKEY_NEXT_SLOT  = 0x1000f,
 	VIRTKEY_TOGGLE_FULLSCREEN = 0x10010,
 	VIRTKEY_ANALOG_LIGHTLY = 0x10011,
+	VIRTKEY_AXIS_SWAP = 0x10012,
+	VIRTKEY_DEVMENU = 0x10013,
 	VIRTKEY_LAST,
 	VIRTKEY_COUNT = VIRTKEY_LAST - VIRTKEY_FIRST
 };
@@ -156,6 +158,7 @@ namespace KeyMap {
 
 	void RestoreDefault();
 
+	void SwapAxis();
 	void UpdateConfirmCancelKeys();
 
 	void NotifyPadConnected(const std::string &name);

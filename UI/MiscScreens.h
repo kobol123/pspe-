@@ -1,4 +1,4 @@
-// Copyright (c) 2013- PPSSPP Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,8 +12,7 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+
 
 #pragma once
 
@@ -55,6 +54,8 @@ protected:
 	virtual void DrawBackground(UIContext &dc);
 	virtual void sendMessage(const char *message, const char *value) override;
 	virtual UI::EventReturn OnLanguageChange(UI::EventParams &e);
+
+	void AddStandardBack(UI::ViewGroup *parent);
 };
 
 class UIDialogScreenWithGameBackground : public UIDialogScreenWithBackground {

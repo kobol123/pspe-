@@ -1,4 +1,4 @@
-// Copyright (c) 2012- PPSSPP Project / Dolphin Project.
+// Copyright (c) 2015- PSPe+ Project / Dolphin Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,12 +12,14 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+
 
 
 #include <vector>
 #include <cstdio>
+
+#include "base/logging.h"
+#include "profiler/profiler.h"
 
 #include "Common/MsgHandler.h"
 #include "Common/StdMutex.h"
@@ -581,6 +583,7 @@ void ForceCheck()
 
 void Advance()
 {
+	PROFILE_THIS_SCOPE("advance");
 	int cyclesExecuted = slicelength - currentMIPS->downcount;
 	globalTimer += cyclesExecuted;
 	currentMIPS->downcount = slicelength;
@@ -628,7 +631,7 @@ void Idle(int maxIdle)
 	int cyclesDown = currentMIPS->downcount;
 	if (maxIdle != 0 && cyclesDown > maxIdle)
 		cyclesDown = maxIdle;
-        
+
 	if (first && cyclesDown > 0)
 	{
 		int cyclesExecuted = slicelength - currentMIPS->downcount;
@@ -674,6 +677,14 @@ std::string GetScheduledEventsSummary()
 
 void Event_DoState(PointerWrap &p, BaseEvent *ev)
 {
+	// There may be padding, so do each one individually.
+	p.Do(ev->time);
+	p.Do(ev->userdata);
+	p.Do(ev->type);
+}
+
+void Event_DoStateOld(PointerWrap &p, BaseEvent *ev)
+{
 	p.Do(*ev);
 }
 
@@ -690,8 +701,10 @@ void DoState(PointerWrap &p)
 	// These (should) be filled in later by the modules.
 	event_types.resize(n, EventType(AntiCrashCallback, "INVALID EVENT"));
 
-	p.DoLinkedList<BaseEvent, GetNewEvent, FreeEvent, Event_DoState>(first, (Event **) NULL);
-	p.DoLinkedList<BaseEvent, GetNewTsEvent, FreeTsEvent, Event_DoState>(tsFirst, &tsLast);
+
+		p.DoLinkedList<BaseEvent, GetNewEvent, FreeEvent, Event_DoState>(first, (Event **) NULL);
+		p.DoLinkedList<BaseEvent, GetNewTsEvent, FreeTsEvent, Event_DoState>(tsFirst, &tsLast);
+
 
 	p.Do(CPU_HZ);
 	p.Do(slicelength);

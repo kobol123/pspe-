@@ -29,7 +29,6 @@
 #include "Core/MIPS/MIPS.h"
 #include "Core/MIPS/MIPSInt.h"
 #include "Core/MIPS/MIPSTables.h"
-#include "Core/MIPS/JitCommon/JitCommon.h"
 #include "Core/Reporting.h"
 #include "Core/HLE/HLE.h"
 #include "Core/HLE/HLETables.h"
@@ -299,7 +298,8 @@ namespace MIPSInt
 			DelayBranchTo(addr);
 			break;
 		case 9: //jalr
-			R(rd) = PC + 8;
+			if (rd != 0)
+				R(rd) = PC + 8;
 			DelayBranchTo(addr);
 			break;
 		}
@@ -526,6 +526,7 @@ namespace MIPSInt
 					R(rt) = MIPSState::FCR0_VALUE;
 				} else {
 					WARN_LOG_REPORT(CPU, "ReadFCR: Unexpected reg %d", fs);
+					R(rt) = 0;
 				}
 				break;
 			}
@@ -572,7 +573,7 @@ namespace MIPSInt
 			{ //TODO: verify
 				int x = 31;
 				int count=0;
-				while (!(R(rs) & (1<<x)) && x >= 0)
+				while (x >= 0 && !(R(rs) & (1<<x)))
 				{
 					count++;
 					x--;
@@ -584,7 +585,7 @@ namespace MIPSInt
 			{ //TODO: verify
 				int x = 31;
 				int count=0;
-				while ((R(rs) & (1<<x)) && x >= 0)
+				while (x >= 0 && (R(rs) & (1<<x)))
 				{
 					count++;
 					x--;
@@ -662,9 +663,9 @@ namespace MIPSInt
 				HI = (u32)(result>>32);
 			}
 			break;
-		case 16: R(rd) = HI; break; //mfhi
+		case 16: if (rd != 0) R(rd) = HI; break; //mfhi
 		case 17: HI = R(rs); break; //mthi
-		case 18: R(rd) = LO; break; //mflo
+		case 18: if (rd != 0) R(rd) = LO; break; //mflo
 		case 19: LO = R(rs); break; //mtlo
 		case 26: //div
 			{
@@ -865,14 +866,15 @@ namespace MIPSInt
 		case 0x0: //ext
 			{
 				int size = _SIZE + 1;
-				R(rt) = (R(rs) >> pos) & ((1<<size) - 1);
+				u32 sourcemask = 0xFFFFFFFFUL >> (32 - size);
+				R(rt) = (R(rs) >> pos) & sourcemask;
 			}
 			break;
 		case 0x4: //ins
 			{
 				int size = (_SIZE + 1) - pos;
-				int sourcemask = (1 << size) - 1;
-				int destmask = sourcemask << pos;
+				u32 sourcemask = 0xFFFFFFFFUL >> (32 - size);
+				u32 destmask = sourcemask << pos;
 				R(rt) = (R(rt) & ~destmask) | ((R(rs)&sourcemask) << pos);
 			}
 			break;
@@ -1042,7 +1044,7 @@ namespace MIPSInt
 		// It's a replacement func!
 		int index = op.encoding & 0xFFFFFF;
 		const ReplacementTableEntry *entry = GetReplacementFunc(index);
-		if (entry && entry->replaceFunc) {
+		if (entry && entry->replaceFunc && (entry->flags & REPFLAG_DISABLED) == 0) {
 			entry->replaceFunc();
 
 			if (entry->flags & (REPFLAG_HOOKENTER | REPFLAG_HOOKEXIT)) {
@@ -1052,7 +1054,11 @@ namespace MIPSInt
 				PC = currentMIPS->r[MIPS_REG_RA];
 			}
 		} else {
-			ERROR_LOG(CPU, "Bad replacement function index %i", index);
+			if (!entry || !entry->replaceFunc) {
+				ERROR_LOG(CPU, "Bad replacement function index %i", index);
+			}
+			// Interpret the original instruction under it.
+			MIPSInterpret(Memory::Read_Instruction(PC, true));
 		}
 	}
 

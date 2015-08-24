@@ -42,22 +42,18 @@
 
 #include "Core/MIPS/JitCommon/JitBlockCache.h"
 #include "Core/MIPS/JitCommon/JitCommon.h"
+#include "Core/MIPS/JitCommon/NativeJit.h"
 
 #if defined(ARM)
-#include "Common/ArmEmitter.h"
 #include "Core/MIPS/ARM/ArmAsm.h"
-using namespace ArmGen;
 #elif defined(_M_IX86) || defined(_M_X64)
-#include "Common/x64Emitter.h"
 #include "Common/x64Analyzer.h"
 #include "Core/MIPS/x86/Asm.h"
-using namespace Gen;
-#elif defined(PPC)
-#include "Common/ppcEmitter.h"
-#include "Core/MIPS/MIPS.h"
-using namespace PpcGen;
+#elif defined(ARM64)
+#include "Core/MIPS/ARM64/Arm64Asm.h"
 #else
-#error "Unsupported arch!"
+// FakeJit doesn't need an emitter, no blocks will be created
+#include "Core/MIPS/MIPS.h"
 #endif
 // #include "JitBase.h"
 
@@ -73,11 +69,19 @@ op_agent_t agent;
 #pragma comment(lib, "jitprofiling.lib")
 #endif
 
+#ifdef ARM
+using namespace ArmGen;
+using namespace ArmJitConstants;
+#elif defined(_M_X64) || defined(_M_IX86)
+using namespace Gen;
+#elif defined(ARM64)
+using namespace Arm64Gen;
+using namespace Arm64JitConstants;
+#endif
 
 const u32 INVALID_EXIT = 0xFFFFFFFF;
-const MIPSOpcode INVALID_ORIGINAL_OP = MIPSOpcode(0x00000001);
 
-JitBlockCache::JitBlockCache(MIPSState *mips, CodeBlock *codeBlock) :
+JitBlockCache::JitBlockCache(MIPSState *mips, NativeCodeBlock *codeBlock) :
 	mips_(mips), codeBlock_(codeBlock), blocks_(0), num_blocks_(0) {
 }
 
@@ -221,13 +225,13 @@ void JitBlockCache::RemoveBlockMap(int block_num) {
 	}
 
 	const u32 pAddr = b.originalAddress & 0x1FFFFFFF;
-	auto it = block_map_.find(std::make_pair(pAddr + 4 * b.originalSize - 1, pAddr));
-	if (it != block_map_.end() && it->second == block_num) {
+	auto it = block_map_.find(std::make_pair(pAddr + 4 * b.originalSize, pAddr));
+	if (it != block_map_.end() && it->second == (u32)block_num) {
 		block_map_.erase(it);
 	} else {
 		// It wasn't in there, or it has the wrong key.  Let's search...
 		for (auto it = block_map_.begin(); it != block_map_.end(); ++it) {
-			if (it->second == block_num) {
+			if (it->second == (u32)block_num) {
 				block_map_.erase(it);
 				break;
 			}
@@ -249,12 +253,10 @@ void JitBlockCache::FinalizeBlock(int block_num, bool block_link) {
 
 	AddBlockMap(block_num);
 
-	u32 latestExit = 0;
 	if (block_link) {
 		for (int i = 0; i < MAX_JIT_BLOCK_EXITS; i++) {
 			if (b.exitAddress[i] != INVALID_EXIT) {
-				links_to_.insert(std::pair<u32, int>(b.exitAddress[i], block_num));
-				latestExit = std::max(latestExit, b.exitAddress[i]);
+				links_to_.insert(std::make_pair(b.exitAddress[i], block_num));
 			}
 		}
 
@@ -262,15 +264,16 @@ void JitBlockCache::FinalizeBlock(int block_num, bool block_link) {
 		LinkBlockExits(block_num);
 	}
 
+	const u32 blockEnd = b.originalAddress + b.originalSize * 4 - 4;
 	if (Memory::IsScratchpadAddress(b.originalAddress)) {
-		ExpandRange(blockMemRanges_[JITBLOCK_RANGE_SCRATCH], b.originalAddress, latestExit);
+		ExpandRange(blockMemRanges_[JITBLOCK_RANGE_SCRATCH], b.originalAddress, blockEnd);
 	}
 	const u32 halfUserMemory = (PSP_GetUserMemoryEnd() - PSP_GetUserMemoryBase()) / 2;
 	if (b.originalAddress < PSP_GetUserMemoryBase() + halfUserMemory) {
-		ExpandRange(blockMemRanges_[JITBLOCK_RANGE_RAMBOTTOM], b.originalAddress, latestExit);
+		ExpandRange(blockMemRanges_[JITBLOCK_RANGE_RAMBOTTOM], b.originalAddress, blockEnd);
 	}
-	if (latestExit > PSP_GetUserMemoryBase() + halfUserMemory) {
-		ExpandRange(blockMemRanges_[JITBLOCK_RANGE_RAMTOP], b.originalAddress, latestExit);
+	if (blockEnd > PSP_GetUserMemoryBase() + halfUserMemory) {
+		ExpandRange(blockMemRanges_[JITBLOCK_RANGE_RAMTOP], b.originalAddress, blockEnd);
 	}
 
 #if defined USE_OPROFILE && USE_OPROFILE
@@ -409,54 +412,68 @@ void JitBlockCache::LinkBlockExits(int i) {
 			int destinationBlock = GetBlockNumberFromStartAddress(b.exitAddress[e]);
 			if (destinationBlock != -1) 	{
 #if defined(ARM)
+				//break Yu-Gi-Oh 6 crash with edit card in Android version
+				//const u8 *nextExit = b.exitPtrs[e + 1];
+				//if (!nextExit) {
+				//	nextExit = b.normalEntry + b.codeSize;
+				//}
 				ARMXEmitter emit(b.exitPtrs[e]);
 				emit.B(blocks_[destinationBlock].checkedEntry);
+				//u32 op = *((const u32 *)emit.GetCodePtr());
+				//// Overwrite with nops until the next unconditional branch.
+				//while ((op & 0xFF000000) != 0xEA000000) {
+				//	emit.BKPT(1);
+				//	op = *((const u32 *)emit.GetCodePtr());
+				//}
+				//emit.BKPT(1);
 				emit.FlushIcache();
-
+				b.linkStatus[e] = true;
 #elif defined(_M_IX86) || defined(_M_X64)
 				XEmitter emit(b.exitPtrs[e]);
+				// Okay, this is a bit ugly, but we check here if it already has a JMP.
+				// That means it doesn't have a full exit to pad with INT 3.
+				bool prelinked = *emit.GetCodePtr() == 0xE9;
 				emit.JMP(blocks_[destinationBlock].checkedEntry, true);
 
-				ptrdiff_t actualSize = emit.GetWritableCodePtr() - b.exitPtrs[e];
-				int pad = JitBlockCache::GetBlockExitSize() - (int)actualSize;
-				for (int i = 0; i < pad; ++i) {
-					emit.INT3();
+				if (!prelinked) {
+					ptrdiff_t actualSize = emit.GetWritableCodePtr() - b.exitPtrs[e];
+					int pad = JitBlockCache::GetBlockExitSize() - (int)actualSize;
+					for (int i = 0; i < pad; ++i) {
+						emit.INT3();
+					}
 				}
-#elif defined(PPC)
-				PPCXEmitter emit(b.exitPtrs[e]);
+				b.linkStatus[e] = true;
+#elif defined(ARM64)
+				ARM64XEmitter emit(b.exitPtrs[e]);
 				emit.B(blocks_[destinationBlock].checkedEntry);
 				emit.FlushIcache();
-#endif
 				b.linkStatus[e] = true;
+#endif
 			}
 		}
 	}
 }
 
 void JitBlockCache::LinkBlock(int i) {
-	using namespace std;
 	LinkBlockExits(i);
 	JitBlock &b = blocks_[i];
-	pair<multimap<u32, int>::iterator, multimap<u32, int>::iterator> ppp;
 	// equal_range(b) returns pair<iterator,iterator> representing the range
 	// of element with key b
-	ppp = links_to_.equal_range(b.originalAddress);
+	auto ppp = links_to_.equal_range(b.originalAddress);
 	if (ppp.first == ppp.second)
 		return;
-	for (multimap<u32, int>::iterator iter = ppp.first; iter != ppp.second; ++iter) {
+	for (auto iter = ppp.first; iter != ppp.second; ++iter) {
 		// PanicAlert("Linking block %i to block %i", iter->second, i);
 		LinkBlockExits(iter->second);
 	}
 }
 
 void JitBlockCache::UnlinkBlock(int i) {
-	using namespace std;
 	JitBlock &b = blocks_[i];
-	pair<multimap<u32, int>::iterator, multimap<u32, int>::iterator> ppp;
-	ppp = links_to_.equal_range(b.originalAddress);
+	auto ppp = links_to_.equal_range(b.originalAddress);
 	if (ppp.first == ppp.second)
 		return;
-	for (multimap<u32, int>::iterator iter = ppp.first; iter != ppp.second; ++iter) {
+	for (auto iter = ppp.first; iter != ppp.second; ++iter) {
 		JitBlock &sourceBlock = blocks_[iter->second];
 		for (int e = 0; e < MAX_JIT_BLOCK_EXITS; e++) {
 			if (sourceBlock.exitAddress[e] == b.originalAddress)
@@ -475,12 +492,13 @@ std::vector<u32> JitBlockCache::SaveAndClearEmuHackOps() {
 			continue;
 
 		const u32 emuhack = GetEmuHackOpForBlock(block_num).encoding;
-		result[block_num] = emuhack;
-		// The goal here is to prevent restoring it if it did not match (in case originalFirstOpcode does match.)
-		if (Memory::ReadUnchecked_U32(b.originalAddress) != emuhack)
-			b.originalFirstOpcode = INVALID_ORIGINAL_OP;
-		else
+		if (Memory::ReadUnchecked_U32(b.originalAddress) == emuhack)
+		{
+			result[block_num] = emuhack;
 			Memory::Write_Opcode_JIT(b.originalAddress, b.originalFirstOpcode);
+		}
+		else
+			result[block_num] = 0;
 	}
 
 	return result;
@@ -494,7 +512,7 @@ void JitBlockCache::RestoreSavedEmuHackOps(std::vector<u32> saved) {
 
 	for (int block_num = 0; block_num < num_blocks_; ++block_num) {
 		const JitBlock &b = blocks_[block_num];
-		if (b.invalid)
+		if (b.invalid || saved[block_num] == 0)
 			continue;
 
 		// Only if we restored it, write it back.
@@ -548,13 +566,20 @@ void JitBlockCache::DestroyBlock(int block_num, bool invalidate) {
 	}
 
 	b->invalid = true;
-	if (Memory::ReadUnchecked_U32(b->originalAddress) == GetEmuHackOpForBlock(block_num).encoding)
-		Memory::Write_Opcode_JIT(b->originalAddress, b->originalFirstOpcode);
+	if (!b->IsPureProxy()) {
+		if (Memory::ReadUnchecked_U32(b->originalAddress) == GetEmuHackOpForBlock(block_num).encoding)
+			Memory::Write_Opcode_JIT(b->originalAddress, b->originalFirstOpcode);
+	}
 
 	// It's not safe to set normalEntry to 0 here, since we use a binary search
 	// that looks at that later to find blocks. Marking it invalid is enough.
 
 	UnlinkBlock(block_num);
+
+	// Don't change the jit code when invalidating a pure proxy block.
+	if (b->IsPureProxy()) {
+		return;
+	}
 
 #if defined(ARM)
 
@@ -576,12 +601,18 @@ void JitBlockCache::DestroyBlock(int block_num, bool invalidate) {
 	XEmitter emit((u8 *)b->checkedEntry);
 	emit.MOV(32, M(&mips_->pc), Imm32(b->originalAddress));
 	emit.JMP(MIPSComp::jit->Asm().dispatcher, true);
-#elif defined(PPC)
-	PPCXEmitter emit((u8 *)b->checkedEntry);
-	emit.MOVI2R(R3, b->originalAddress);
-	emit.STW(R0, CTXREG, offsetof(MIPSState, pc));
+
+#elif defined(ARM64)
+
+	// Send anyone who tries to run this block back to the dispatcher.
+	// Not entirely ideal, but .. works.
+	// Spurious entrances from previously linked blocks can only come through checkedEntry
+	ARM64XEmitter emit((u8 *)b->checkedEntry);
+	emit.MOVI2R(SCRATCH1, b->originalAddress);
+	emit.STR(INDEX_UNSIGNED, SCRATCH1, CTXREG, offsetof(MIPSState, pc));
 	emit.B(MIPSComp::jit->dispatcher);
 	emit.FlushIcache();
+
 #endif
 }
 
@@ -590,17 +621,23 @@ void JitBlockCache::InvalidateICache(u32 address, const u32 length) {
 	const u32 pAddr = address & 0x1FFFFFFF;
 	const u32 pEnd = pAddr + length;
 
+	if (pEnd < pAddr) {
+		ERROR_LOG(JIT, "Bad InvalidateICache: %08x with len=%d", address, length);
+		return;
+	}
+
+	if (pAddr == 0 && pEnd >= 0x1FFFFFFF) {
+		InvalidateChangedBlocks();
+		return;
+	}
+
 	// Blocks may start and end in overlapping ways, and destroying one invalidates iterators.
 	// So after destroying one, we start over.
-	while (true) {
+	do {
+	restart:
 		auto next = block_map_.lower_bound(std::make_pair(pAddr, 0));
-		// End is inclusive, so a matching end won't be included.
-		auto last = block_map_.lower_bound(std::make_pair(pEnd, 0));
-		if (next == last) {
-			// It wasn't in the map at all (or anymore.)
-			// This includes if both were end(), which should be uncommon.
-			break;
-		}
+		auto last = block_map_.upper_bound(std::make_pair(pEnd + MAX_BLOCK_INSTRUCTIONS, 0));
+		// Note that if next is end(), last will be end() too (equal.)
 		for (; next != last; ++next) {
 			const u32 blockStart = next->first.second;
 			const u32 blockEnd = next->first.first;
@@ -608,23 +645,67 @@ void JitBlockCache::InvalidateICache(u32 address, const u32 length) {
 				DestroyBlock(next->second, true);
 				// Our iterator is now invalid.  Break and search again.
 				// Most of the time there shouldn't be a bunch of matching blocks.
-				break;
+				goto restart;
 			}
 		}
-		if (next == last) {
-			break;
+		// We got here - it wasn't in the map at all (or anymore.)
+	} while (false);
+}
+
+void JitBlockCache::InvalidateChangedBlocks() {
+	// The primary goal of this is to make sure block linking is cleared up.
+	for (int block_num = 0; block_num < num_blocks_; ++block_num) {
+		JitBlock &b = blocks_[block_num];
+		if (b.invalid || b.IsPureProxy())
+			continue;
+
+		const u32 emuhack = GetEmuHackOpForBlock(block_num).encoding;
+		if (Memory::ReadUnchecked_U32(b.originalAddress) != emuhack) {
+			DEBUG_LOG(JIT, "Invalidating changed block at %08x", b.originalAddress);
+			DestroyBlock(block_num, true);
 		}
 	}
 }
 
 int JitBlockCache::GetBlockExitSize() {
 #if defined(ARM)
-	// TODO
+	// Will depend on the sequence found to encode the destination address.
 	return 0;
 #elif defined(_M_IX86) || defined(_M_X64)
 	return 15;
-#elif defined(PPC)
-	// TODO
+#elif defined(ARM64)
+	// Will depend on the sequence found to encode the destination address.
+	return 0;
+#else
+#warning GetBlockExitSize unimplemented
 	return 0;
 #endif
+}
+
+void JitBlockCache::ComputeStats(BlockCacheStats &bcStats) {
+	double totalBloat = 0.0;
+	double maxBloat = 0.0;
+	double minBloat = 1000000000.0;
+	for (int i = 0; i < num_blocks_; i++) {
+		JitBlock *b = GetBlock(i);
+		double codeSize = (double)b->codeSize;
+		if (codeSize == 0)
+			continue;
+		double origSize = (double)(4 * b->originalSize);
+		double bloat = codeSize / origSize;
+		if (bloat < minBloat) {
+			minBloat = bloat;
+			bcStats.minBloatBlock = b->originalAddress;
+		}
+		if (bloat > maxBloat) {
+			maxBloat = bloat;
+			bcStats.maxBloatBlock = b->originalAddress;
+		}
+		totalBloat += bloat;
+		bcStats.bloatMap[bloat] = b->originalAddress;
+	}
+	bcStats.numBlocks = num_blocks_;
+	bcStats.minBloat = minBloat;
+	bcStats.maxBloat = maxBloat;
+	bcStats.avgBloat = totalBloat / (double)num_blocks_;
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2012- PPSSPP Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,8 +12,7 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+
 
 #pragma once
 
@@ -29,7 +28,7 @@ public:
 		: UI::View(layoutParams), pointerDownMask_(0), scale_(scale), bgImg_(bgImg), img_(img), angle_(0.0f), flipImageH_(false) {
 	}
 
-	virtual void Key(const KeyInput &input) {}
+	virtual bool Key(const KeyInput &input) { }
 	virtual void Update(const InputState &input) {}
 	virtual void Touch(const TouchInput &input);
 	virtual void Draw(UIContext &dc);
@@ -56,7 +55,7 @@ public:
 		: MultiTouchButton(bgImg, img, scale, layoutParams), value_(value) {
 
 	}
-	virtual void Touch(const TouchInput &input);
+	virtual void Touch(const TouchInput &input) override;
 	virtual bool IsDown() { return *value_; }
 
 private:
@@ -68,7 +67,7 @@ public:
 	PSPButton(int pspButtonBit, int bgImg, int img, float scale, UI::LayoutParams *layoutParams)
 		: MultiTouchButton(bgImg, img, scale, layoutParams), pspButtonBit_(pspButtonBit) {
 	}
-	virtual void Touch(const TouchInput &input);
+	void Touch(const TouchInput &input) override;
 	virtual bool IsDown();
 
 private:
@@ -79,11 +78,11 @@ class PSPDpad : public UI::View {
 public:
 	PSPDpad(int arrowIndex, int overlayIndex, float scale, float spacing, UI::LayoutParams *layoutParams);
 
-	virtual void Key(const KeyInput &input) {}
-	virtual void Update(const InputState &input) {}
-	virtual void Touch(const TouchInput &input);
-	virtual void Draw(UIContext &dc);
-	virtual void GetContentDimensions(const UIContext &dc, float &w, float &h) const;
+	bool Key(const KeyInput &input) override { return false; }
+	void Update(const InputState &input) override {}
+	void Touch(const TouchInput &input) override;
+	void Draw(UIContext &dc) override;
+	void GetContentDimensions(const UIContext &dc, float &w, float &h) const override;
 
 private:
 	void ProcessTouch(float x, float y, bool down);
@@ -101,11 +100,11 @@ class PSPStick : public UI::View {
 public:
 	PSPStick(int bgImg, int stickImg, int stick, float scale, UI::LayoutParams *layoutParams);
 
-	virtual void Key(const KeyInput &input) {}
-	virtual void Update(const InputState &input) {}
-	virtual void Touch(const TouchInput &input);
-	virtual void Draw(UIContext &dc);
-	virtual void GetContentDimensions(const UIContext &dc, float &w, float &h) const;
+	bool Key(const KeyInput &input) override { return false; }
+	void Update(const InputState &input) override {}
+	void Touch(const TouchInput &input) override;
+	void Draw(UIContext &dc) override;
+	void GetContentDimensions(const UIContext &dc, float &w, float &h) const override;
 
 private:
 	void ProcessTouch(float x, float y, bool down);
@@ -118,6 +117,8 @@ private:
 	float scale_;
 	bool dragging_[MAX_POINTERS];
 	bool lastPointerDown_[MAX_POINTERS];
+
+
 };
 
 //initializes the layout from Config. if a default layout does not exist,
@@ -128,3 +129,4 @@ UI::ViewGroup *CreatePadLayout(float xres, float yres, bool *pause);
 const int D_pad_Radius = 50;
 const int baseActionButtonSpacing = 60;
 
+const int baseRightSpacing = 130;

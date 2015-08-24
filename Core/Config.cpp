@@ -1,4 +1,4 @@
-// Copyright (c) 2012- PPSSPP Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,11 +12,11 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+
 
 #include <cstdlib>
 #include <ctime>
+#include <algorithm>
 
 #include "base/display.h"
 #include "base/NativeApp.h"
@@ -32,11 +32,13 @@
 #include "Common/KeyMap.h"
 #include "Common/FileUtil.h"
 #include "Common/StringUtils.h"
-#include "Config.h"
+#include "Core/Config.h"
+#include "Core/Loaders.h"
+#include "GPU/Common/FramebufferCommon.h"
 #include "HLE/sceUtility.h"
 
 #ifndef USING_QT_UI
-extern const char *PPSSPP_GIT_VERSION; 
+extern const char *PPSSPP_GIT_VERSION;
 #endif
 
 // TODO: Find a better place for this.
@@ -213,6 +215,7 @@ struct ConfigSetting {
 	Type type_;
 	bool report_;
 	bool save_;
+
 	SettingPtr ptr_;
 	Value default_;
 	Callback cb_;
@@ -239,15 +242,19 @@ const char *DefaultLangRegion() {
 
 const char *CreateRandMAC() {
 	std::stringstream randStream;
-	srand(time(0));
-	for(int i = 0; i < 6; i++) {
-		randStream << std::hex << (rand() % 256); //generates each octet for the mac in hex format
-		if (i<5) {
+	srand(time(nullptr));
+	for (int i = 0; i < 6; i++) {
+		u32 value = rand() % 256;
+		if (value <= 15)
+			randStream << '0' << std::hex << value;
+		else
+			randStream << std::hex << value;
+		if (i < 5) {
 			randStream << ':'; //we need a : between every octet
 		}
 	}
-  // It's ok to strdup, this runs once and will be freed by exiting the process anyway
-	return strdup(randStream.str().c_str()); //no need for creating a new string, just return this
+	// It's ok to strdup, this runs once and will be freed by exiting the process anyway
+	return strdup(randStream.str().c_str());
 }
 
 static int DefaultNumWorkers() {
@@ -257,8 +264,10 @@ static int DefaultNumWorkers() {
 static bool DefaultJit() {
 #ifdef IOS
 	return iosCanUseJit;
-#else
+#elif defined(ARM) || defined(ARM64) || defined(_M_IX86) || defined(_M_X64)
 	return true;
+#else
+	return false;
 #endif
 }
 
@@ -274,6 +283,7 @@ static ConfigSetting generalSettings[] = {
 	ConfigSetting("AutoRun", &g_Config.bAutoRun, true),
 	ConfigSetting("Browse", &g_Config.bBrowse, false),
 	ConfigSetting("IgnoreBadMemAccess", &g_Config.bIgnoreBadMemAccess, true),
+
 	ConfigSetting("CurrentDirectory", &g_Config.currentDirectory, ""),
 	ConfigSetting("ShowDebuggerOnLoad", &g_Config.bShowDebuggerOnLoad, false),
 	ConfigSetting("HomebrewStore", &g_Config.bHomebrewStore, false, false),
@@ -284,6 +294,8 @@ static ConfigSetting generalSettings[] = {
 	ReportedConfigSetting("NumWorkerThreads", &g_Config.iNumWorkerThreads, &DefaultNumWorkers),
 	ConfigSetting("EnableAutoLoad", &g_Config.bEnableAutoLoad, false),
 	ReportedConfigSetting("EnableCheats", &g_Config.bEnableCheats, false),
+
+
 	ConfigSetting("ScreenshotsAsPNG", &g_Config.bScreenshotsAsPNG, false),
 	ConfigSetting("StateSlot", &g_Config.iCurrentStateSlot, 0),
 	ConfigSetting("RewindFlipFrequency", &g_Config.iRewindFlipFrequency, 0),
@@ -295,10 +307,12 @@ static ConfigSetting generalSettings[] = {
 	// "default" means let emulator decide, "" means disable.
 	ConfigSetting("ReportingHost", &g_Config.sReportHost, "default"),
 	ConfigSetting("AutoSaveSymbolMap", &g_Config.bAutoSaveSymbolMap, false),
+	ConfigSetting("CacheFullIsoInRam", &g_Config.bCacheFullIsoInRam, false),
 
 #ifdef ANDROID
 	ConfigSetting("ScreenRotation", &g_Config.iScreenRotation, 1),
 #endif
+	ConfigSetting("InternalScreenRotation", &g_Config.iInternalScreenRotation, 1),
 
 #if defined(USING_WIN_UI)
 	ConfigSetting("TopMost", &g_Config.bTopMost, false),
@@ -324,9 +338,8 @@ static bool DefaultForceFlushToZero() {
 static ConfigSetting cpuSettings[] = {
 	ReportedConfigSetting("Jit", &g_Config.bJit, &DefaultJit),
 	ReportedConfigSetting("SeparateCPUThread", &g_Config.bSeparateCPUThread, false),
-	ConfigSetting("AtomicAudioLocks", &g_Config.bAtomicAudioLocks, false),
-
 	ReportedConfigSetting("SeparateIOThread", &g_Config.bSeparateIOThread, true),
+	ReportedConfigSetting("IOTimingMethod", &g_Config.iIOTimingMethod, IOTIMING_FAST),
 	ConfigSetting("FastMemoryAccess", &g_Config.bFastMemory, true),
 	ReportedConfigSetting("FuncReplacements", &g_Config.bFuncReplacements, true),
 	ReportedConfigSetting("CPUSpeed", &g_Config.iLockedCPUSpeed, 0),
@@ -337,9 +350,11 @@ static ConfigSetting cpuSettings[] = {
 };
 
 static int DefaultRenderingMode() {
-	if (System_GetProperty(SYSPROP_NAME) == "samsung:GT-S5360") {
-		return 0;  // Non-buffered
-	}
+	// Workaround for ancient device. Can probably be removed now as we do no longer
+	// support Froyo (Android 2.2)...
+	//if (System_GetProperty(SYSPROP_NAME) == "samsung:GT-S5360") {
+	//	return 0;  // Non-buffered
+	//}
 	return 1;
 }
 
@@ -348,7 +363,8 @@ static int DefaultInternalResolution() {
 #if defined(USING_WIN_UI)
 	return 0;
 #else
-	return pixel_xres >= 1024 ? 2 : 1;
+	int longestDisplaySide = std::max(System_GetPropertyInt(SYSPROP_DISPLAY_XRES), System_GetPropertyInt(SYSPROP_DISPLAY_YRES));
+	return longestDisplaySide >= 1000 ? 2 : 1;
 #endif
 }
 
@@ -392,6 +408,10 @@ static int DefaultAndroidHwScale() {
 }
 
 static ConfigSetting graphicsSettings[] = {
+	ConfigSetting("EnableCardboard", &g_Config.bEnableCardboard, false),
+	ConfigSetting("CardboardScreenSize", &g_Config.iCardboardScreenSize, 50),
+	ConfigSetting("CardboardXShift", &g_Config.iCardboardXShift, 0),
+	ConfigSetting("CardboardYShift", &g_Config.iCardboardXShift, 0),
 	ConfigSetting("ShowFPSCounter", &g_Config.iShowFPSCounter, 0),
 	ReportedConfigSetting("GPUBackend", &g_Config.iGPUBackend, 0),
 	ReportedConfigSetting("RenderingMode", &g_Config.iRenderingMode, &DefaultRenderingMode),
@@ -402,8 +422,8 @@ static ConfigSetting graphicsSettings[] = {
 	ReportedConfigSetting("BufferFiltering", &g_Config.iBufFilter, 1),
 	ReportedConfigSetting("InternalResolution", &g_Config.iInternalResolution, &DefaultInternalResolution),
 	ReportedConfigSetting("AndroidHwScale", &g_Config.iAndroidHwScale, &DefaultAndroidHwScale),
-	ReportedConfigSetting("FrameSkip", &g_Config.iFrameSkip, 0),
-	ReportedConfigSetting("AutoFrameSkip", &g_Config.bAutoFrameSkip, false),
+	ReportedConfigSetting("FrameSkip", &g_Config.iFrameSkip, 3),
+	ReportedConfigSetting("AutoFrameSkip", &g_Config.bAutoFrameSkip, true),
 	ReportedConfigSetting("FrameRate", &g_Config.iFpsLimit, 0),
 #ifdef _WIN32
 	ConfigSetting("FrameSkipUnthrottle", &g_Config.bFrameSkipUnthrottle, false),
@@ -416,7 +436,7 @@ static ConfigSetting graphicsSettings[] = {
 #ifdef USING_GLES2
 	ConfigSetting("AnisotropyLevel", &g_Config.iAnisotropyLevel, 0),
 #else
-	ConfigSetting("AnisotropyLevel", &g_Config.iAnisotropyLevel, 8),
+	ConfigSetting("AnisotropyLevel", &g_Config.iAnisotropyLevel, 8, true, true),
 #endif
 	ReportedConfigSetting("VertexCache", &g_Config.bVertexCache, true),
 	ReportedConfigSetting("TextureBackoffCache", &g_Config.bTextureBackoffCache, false),
@@ -433,7 +453,7 @@ static ConfigSetting graphicsSettings[] = {
 	ConfigSetting("SmallDisplay", &g_Config.bSmallDisplay, false),
 	ConfigSetting("ImmersiveMode", &g_Config.bImmersiveMode, false),
 
-	ReportedConfigSetting("TrueColor", &g_Config.bTrueColor, true),
+
 
 	ReportedConfigSetting("MipMap", &g_Config.bMipMap, true),
 
@@ -444,34 +464,47 @@ static ConfigSetting graphicsSettings[] = {
 	ReportedConfigSetting("DisableStencilTest", &g_Config.bDisableStencilTest, false),
 	ReportedConfigSetting("AlwaysDepthWrite", &g_Config.bAlwaysDepthWrite, false),
 
+	ReportedConfigSetting("KernelWaitHelper", &g_Config.bKernelWH, false),
 	// Not really a graphics setting...
 	ReportedConfigSetting("TimerHack", &g_Config.bTimerHack, &DefaultTimerHack),
 	ReportedConfigSetting("AlphaMaskHack", &g_Config.bAlphaMaskHack, false),
-	ReportedConfigSetting("SplineBezierQuality", &g_Config.iSplineBezierQuality, 2),
+	ReportedConfigSetting("SplineBezierQuality", &g_Config.iSplineBezierQuality, 0),
 	ReportedConfigSetting("PostShader", &g_Config.sPostShaderName, "Off"),
+	ReportedConfigSetting("ThreadHack Burnout", &g_Config.bThreadHackb, false),
+	ReportedConfigSetting("BlockHack Gow", &g_Config.bBlockHack, false),
 
-	ReportedConfigSetting("MemBlockTransferGPU", &g_Config.bBlockTransferGPU, true),
 	ReportedConfigSetting("DisableSlowFramebufEffects", &g_Config.bDisableSlowFramebufEffects, false),
-	ReportedConfigSetting("FragmentTestCache", &g_Config.bFragmentTestCache, true),
 
-	ConfigSetting(false),
+
+	ConfigSetting(false), 
 };
 
 static ConfigSetting soundSettings[] = {
 	ConfigSetting("Enable", &g_Config.bEnableSound, true),
-	ConfigSetting("AudioLatency", &g_Config.iAudioLatency, 1),
-	ConfigSetting("SoundSpeedHack", &g_Config.bSoundSpeedHack, false),
+	ConfigSetting("AudioBackend", &g_Config.iAudioBackend, 0),
+	ConfigSetting("AudioLatency", &g_Config.iAudioLatency, 0),
+	ConfigSetting("SoundSpeedHack", &g_Config.bSoundSpeedHack, true),
+
 
 	ConfigSetting(false),
 };
 
 static bool DefaultShowTouchControls() {
 #if defined(MOBILE_DEVICE)
-	std::string name = System_GetProperty(SYSPROP_NAME);
-	if (KeyMap::HasBuiltinController(name)) {
+	int deviceType = System_GetPropertyInt(SYSPROP_DEVICE_TYPE);
+	if (deviceType == DEVICE_TYPE_MOBILE) {
+		std::string name = System_GetProperty(SYSPROP_NAME);
+		if (KeyMap::HasBuiltinController(name)) {
+			return false;
+		} else {
+			return true;
+		}
+	} else if (deviceType == DEVICE_TYPE_TV) {
+		return false;
+	} else if (deviceType == DEVICE_TYPE_DESKTOP) {
 		return false;
 	} else {
-		return true;
+		return false;
 	}
 #else
 	return false;
@@ -506,7 +539,7 @@ static ConfigSetting controlSettings[] = {
 	ConfigSetting("IgnoreWindowsKey", &g_Config.bIgnoreWindowsKey, false),
 #endif
 	ConfigSetting("ShowTouchControls", &g_Config.bShowTouchControls, &DefaultShowTouchControls),
-	// ConfigSetting("KeyMapping", &g_Config.iMappingMap, 0),
+
 
 #ifdef MOBILE_DEVICE
 	ConfigSetting("TiltBaseX", &g_Config.fTiltBaseX, 0.0f),
@@ -520,8 +553,10 @@ static ConfigSetting controlSettings[] = {
 #endif
 
 	ConfigSetting("DisableDpadDiagonals", &g_Config.bDisableDpadDiagonals, false),
+	ConfigSetting("GamepadOnlyFocused", &g_Config.bGamepadOnlyFocused, false),
 	ConfigSetting("TouchButtonStyle", &g_Config.iTouchButtonStyle, 1),
 	ConfigSetting("TouchButtonOpacity", &g_Config.iTouchButtonOpacity, 65),
+	ConfigSetting("AutoCenterTouchAnalog", &g_Config.bAutoCenterTouchAnalog, false),
 
 	// -1.0f means uninitialized, set in GamepadEmu::CreatePadLayout().
 	ConfigSetting("ActionButtonSpacing2", &g_Config.fActionButtonSpacing, 1.0f),
@@ -533,25 +568,36 @@ static ConfigSetting controlSettings[] = {
 
 	// Note: these will be overwritten if DPadRadius is set.
 	ConfigSetting("DPadScale", &g_Config.fDpadScale, defaultControlScale),
-	ConfigSetting("DPadSpacing", &g_Config.fDpadSpacing, 1.0f),
-	ConfigSetting("StartKeyX", &g_Config.fStartKeyX, -1.0f),
-	ConfigSetting("StartKeyY", &g_Config.fStartKeyY, -1.0f),
-	ConfigSetting("StartKeyScale", &g_Config.fStartKeyScale, defaultControlScale),
-	ConfigSetting("SelectKeyX", &g_Config.fSelectKeyX, -1.0f),
-	ConfigSetting("SelectKeyY", &g_Config.fSelectKeyY, -1.0f),
-	ConfigSetting("SelectKeyScale", &g_Config.fSelectKeyScale, defaultControlScale),
-	ConfigSetting("UnthrottleKeyX", &g_Config.fUnthrottleKeyX, -1.0f),
-	ConfigSetting("UnthrottleKeyY", &g_Config.fUnthrottleKeyY, -1.0f),
-	ConfigSetting("UnthrottleKeyScale", &g_Config.fUnthrottleKeyScale, defaultControlScale),
-	ConfigSetting("LKeyX", &g_Config.fLKeyX, -1.0f),
-	ConfigSetting("LKeyY", &g_Config.fLKeyY, -1.0f),
-	ConfigSetting("LKeyScale", &g_Config.fLKeyScale, defaultControlScale),
-	ConfigSetting("RKeyX", &g_Config.fRKeyX, -1.0f),
-	ConfigSetting("RKeyY", &g_Config.fRKeyY, -1.0f),
-	ConfigSetting("RKeyScale", &g_Config.fRKeyScale, defaultControlScale),
-	ConfigSetting("AnalogStickX", &g_Config.fAnalogStickX, -1.0f),
-	ConfigSetting("AnalogStickY", &g_Config.fAnalogStickY, -1.0f),
-	ConfigSetting("AnalogStickScale", &g_Config.fAnalogStickScale, defaultControlScale),
+		ConfigSetting("DPadSpacing", &g_Config.fDpadSpacing, 1.0f),
+		ConfigSetting("StartKeyX", &g_Config.fStartKeyX, -1.0f),
+		ConfigSetting("StartKeyY", &g_Config.fStartKeyY, -1.0f),
+		ConfigSetting("StartKeyScale", &g_Config.fStartKeyScale, defaultControlScale),
+		ConfigSetting("SelectKeyX", &g_Config.fSelectKeyX, -1.0f),
+		ConfigSetting("SelectKeyY", &g_Config.fSelectKeyY, -1.0f),
+		ConfigSetting("SelectKeyScale", &g_Config.fSelectKeyScale, defaultControlScale),
+		ConfigSetting("UnthrottleKeyX", &g_Config.fUnthrottleKeyX, -1.0f),
+		ConfigSetting("UnthrottleKeyY", &g_Config.fUnthrottleKeyY, -1.0f),
+		ConfigSetting("UnthrottleKeyScale", &g_Config.fUnthrottleKeyScale, defaultControlScale),
+		ConfigSetting("LKeyX", &g_Config.fLKeyX, -1.0f),
+		ConfigSetting("LKeyY", &g_Config.fLKeyY, -1.0f),
+		ConfigSetting("LKeyScale", &g_Config.fLKeyScale, defaultControlScale),
+		ConfigSetting("RKeyX", &g_Config.fRKeyX, -1.0f),
+		ConfigSetting("RKeyY", &g_Config.fRKeyY, -1.0f),
+		ConfigSetting("RKeyScale", &g_Config.fRKeyScale, defaultControlScale),
+		ConfigSetting("AnalogStickX", &g_Config.fAnalogStickX, -1.0f),
+		ConfigSetting("AnalogStickY", &g_Config.fAnalogStickY, -1.0f),
+		ConfigSetting("AnalogStickScale", &g_Config.fAnalogStickScale, defaultControlScale),
+#ifdef _WIN32
+	ConfigSetting("DInputAnalogDeadzone", &g_Config.fDInputAnalogDeadzone, 0.1f),
+	ConfigSetting("DInputAnalogInverseMode", &g_Config.iDInputAnalogInverseMode, 0),
+	ConfigSetting("DInputAnalogInverseDeadzone", &g_Config.fDInputAnalogInverseDeadzone, 0.0f),
+	ConfigSetting("DInputAnalogSensitivity", &g_Config.fDInputAnalogSensitivity, 1.0f),
+
+	ConfigSetting("XInputAnalogDeadzone", &g_Config.fXInputAnalogDeadzone, 0.24f),
+	ConfigSetting("XInputAnalogInverseMode", &g_Config.iXInputAnalogInverseMode, 0),
+	ConfigSetting("XInputAnalogInverseDeadzone", &g_Config.fXInputAnalogInverseDeadzone, 0.0f),
+	ConfigSetting("XInputAnalogSensitivity", &g_Config.fXInputAnalogSensitivity, 1.0f),
+#endif
 	ConfigSetting("AnalogLimiterDeadzone", &g_Config.fAnalogLimiterDeadzone, 0.6f),
 
 	ConfigSetting(false),
@@ -559,7 +605,7 @@ static ConfigSetting controlSettings[] = {
 
 static ConfigSetting networkSettings[] = {
 	ConfigSetting("EnableWlan", &g_Config.bEnableWlan, false),
-
+	ConfigSetting("EnableAdhocServer", &g_Config.bEnableAdhocServer, true),
 	ConfigSetting(false),
 };
 
@@ -594,14 +640,14 @@ static ConfigSetting systemParamSettings[] = {
 	ConfigSetting("TimeFormat", &g_Config.iTimeFormat, PSP_SYSTEMPARAM_TIME_FORMAT_24HR),
 	ConfigSetting("DateFormat", &g_Config.iDateFormat, PSP_SYSTEMPARAM_DATE_FORMAT_YYYYMMDD),
 	ConfigSetting("TimeZone", &g_Config.iTimeZone, 0),
-	ConfigSetting("DayLightSavings", &g_Config.bDayLightSavings, (bool)PSP_SYSTEMPARAM_DAYLIGHTSAVINGS_STD),
+	ConfigSetting("DayLightSavings", &g_Config.bDayLightSavings, (bool) PSP_SYSTEMPARAM_DAYLIGHTSAVINGS_STD),
 	ReportedConfigSetting("ButtonPreference", &g_Config.iButtonPreference, PSP_SYSTEMPARAM_BUTTON_CROSS),
 	ConfigSetting("LockParentalLevel", &g_Config.iLockParentalLevel, 0),
 	ConfigSetting("WlanAdhocChannel", &g_Config.iWlanAdhocChannel, PSP_SYSTEMPARAM_ADHOC_CHANNEL_AUTOMATIC),
 #if defined(USING_WIN_UI)
 	ConfigSetting("BypassOSKWithKeyboard", &g_Config.bBypassOSKWithKeyboard, false),
 #endif
-	ConfigSetting("WlanPowerSave", &g_Config.bWlanPowerSave, (bool)PSP_SYSTEMPARAM_WLAN_POWERSAVE_OFF),
+	ConfigSetting("WlanPowerSave", &g_Config.bWlanPowerSave, (bool) PSP_SYSTEMPARAM_WLAN_POWERSAVE_OFF),
 	ReportedConfigSetting("EncryptSave", &g_Config.bEncryptSave, true),
 
 	ConfigSetting(false),
@@ -637,7 +683,7 @@ static ConfigSetting speedHackSettings[] = {
 };
 
 static ConfigSetting jitSettings[] = {
-	ReportedConfigSetting("DiscardRegsOnJRRA", &g_Config.bDiscardRegsOnJRRA, false, false),
+
 
 	ConfigSetting(false),
 };
@@ -664,7 +710,7 @@ static ConfigSectionSettings sections[] = {
 	{"Upgrade", upgradeSettings},
 };
 
-Config::Config() { }
+Config::Config()  { }
 Config::~Config() { }
 
 std::map<std::string, std::pair<std::string, int>> GetLangValuesMapping() {
@@ -714,6 +760,8 @@ void Config::Load(const char *iniFileName, const char *controllerIniFilename) {
 
 	INFO_LOG(LOADER, "Loading config: %s", iniFilename_.c_str());
 	bSaveSettings = true;
+
+
 
 	IniFile iniFile;
 	if (!iniFile.Load(iniFilename_)) {
@@ -820,16 +868,28 @@ void Config::Load(const char *iniFileName, const char *controllerIniFilename) {
 		// Continue anyway to initialize the config. It will just restore the defaults.
 		KeyMap::LoadFromIni(controllerIniFile);
 	}
+	
 
 	CleanRecent();
 
 #ifdef _WIN32
 	iTempGPUBackend = iGPUBackend;
 #endif
+
+	// Fix Wrong MAC address by old version by "Change MAC address"
+	if (sMACAddress.length() != 17)
+		sMACAddress = CreateRandMAC();
+
+	if (g_Config.bAutoFrameSkip && g_Config.iRenderingMode == FB_NON_BUFFERED_MODE) {
+		g_Config.iRenderingMode = FB_BUFFERED_MODE;
+	}
 }
 
 void Config::Save() {
 	if (iniFilename_.size() && g_Config.bSaveSettings) {
+		
+
+
 		CleanRecent();
 		IniFile iniFile;
 		if (!iniFile.Load(iniFilename_.c_str())) {
@@ -842,7 +902,9 @@ void Config::Save() {
 		for (size_t i = 0; i < ARRAY_SIZE(sections); ++i) {
 			IniFile::Section *section = iniFile.GetOrCreateSection(sections[i].section);
 			for (auto setting = sections[i].settings; setting->HasMore(); ++setting) {
-				setting->Set(section);
+
+					setting->Set(section);
+
 			}
 		}
 
@@ -877,16 +939,16 @@ void Config::Save() {
 		INFO_LOG(LOADER, "Config saved: %s", iniFilename_.c_str());
 
 
-		IniFile controllerIniFile;
-		if (!controllerIniFile.Load(controllerIniFilename_.c_str())) {
-			ERROR_LOG(LOADER, "Error saving config - can't read ini %s", controllerIniFilename_.c_str());
-		}
-		KeyMap::SaveToIni(controllerIniFile);
-		if (!controllerIniFile.Save(controllerIniFilename_.c_str())) {
-			ERROR_LOG(LOADER, "Error saving config - can't write ini %s", controllerIniFilename_.c_str());
-			return;
-		}
-		INFO_LOG(LOADER, "Controller config saved: %s", controllerIniFilename_.c_str());
+			IniFile controllerIniFile;
+			if (!controllerIniFile.Load(controllerIniFilename_.c_str())) {
+				ERROR_LOG(LOADER, "Error saving config - can't read ini %s", controllerIniFilename_.c_str());
+			}
+			KeyMap::SaveToIni(controllerIniFile);
+			if (!controllerIniFile.Save(controllerIniFilename_.c_str())) {
+				ERROR_LOG(LOADER, "Error saving config - can't write ini %s", controllerIniFilename_.c_str());
+				return;
+			}
+			INFO_LOG(LOADER, "Controller config saved: %s", controllerIniFilename_.c_str());
 
 	} else {
 		INFO_LOG(LOADER, "Not saving config");
@@ -937,7 +999,7 @@ void Config::DownloadCompletedCallback(http::Download &download) {
 	}
 
 	if (installed < upgrade && dismissed != upgrade) {
-		g_Config.upgradeMessage = "New version of PSPe+ available!";
+		g_Config.upgradeMessage = "New version of PSPE+ available!";
 		g_Config.upgradeVersion = upgrade.ToString();
 		g_Config.dismissedVersion = "";
 	}
@@ -974,18 +1036,18 @@ void Config::CleanRecent() {
 	std::vector<std::string> cleanedRecent;
 	for (size_t i = 0; i < recentIsos.size(); i++) {
 		if (File::Exists(recentIsos[i])) {
-			// clean the redundant recent games' list.
-			if (cleanedRecent.size()==0) { // add first one
-				cleanedRecent.push_back(recentIsos[i]);
-			}
-			for (size_t j = 0; j < cleanedRecent.size();j++) {
-				if (cleanedRecent[j] == recentIsos[i])
-					break; // skip if found redundant
-				if (j == cleanedRecent.size() - 1){ // add if no redundant found
-					cleanedRecent.push_back(recentIsos[i]);
+					// clean the redundant recent games' list.
+					if (cleanedRecent.size()==0) { // add first one
+						cleanedRecent.push_back(recentIsos[i]);
+					}
+					for (size_t j = 0; j < cleanedRecent.size();j++) {
+						if (cleanedRecent[j] == recentIsos[i])
+							break; // skip if found redundant
+						if (j == cleanedRecent.size() - 1){ // add if no redundant found
+							cleanedRecent.push_back(recentIsos[i]);
+						}
+					}
 				}
-			}
-		}
 	}
 	recentIsos = cleanedRecent;
 }
@@ -1020,17 +1082,123 @@ const std::string Config::FindConfigFile(const std::string &baseFilename) {
 	if (!File::Exists(filename)) {
 		std::string path;
 		SplitPath(filename, &path, NULL, NULL);
-		File::CreateFullPath(path);
+
+			File::CreateFullPath(path);
+			createdPath_ = path;
+
 	}
 	return filename;
 }
 
 void Config::RestoreDefaults() {
-	if(File::Exists(iniFilename_))
-		File::Delete(iniFilename_);
-	recentIsos.clear();
-	currentDirectory = "";
+
+		if (File::Exists(iniFilename_))
+			File::Delete(iniFilename_);
+		recentIsos.clear();
+		currentDirectory = "";
+
 	Load();
+}
+
+bool Config::hasGameConfig(const std::string &pGameId)
+{
+	std::string fullIniFilePath = getGameConfigFile(pGameId);
+
+	IniFile existsCheck;
+	bool exists = existsCheck.Load(fullIniFilePath);
+	return exists;
+}
+
+void Config::changeGameSpecific(const std::string &pGameId)
+{
+	Save();
+	gameId_ = pGameId;
+
+}
+
+bool Config::createGameConfig(const std::string &pGameId)
+{
+	std::string fullIniFilePath = getGameConfigFile(pGameId);
+
+	if (hasGameConfig(pGameId))
+	{
+		return false;
+	}
+
+	File::CreateEmptyFile(fullIniFilePath);
+
+	return true;
+}
+
+bool Config::deleteGameConfig(const std::string& pGameId)
+{
+	std::string fullIniFilePath = getGameConfigFile(pGameId);
+
+	File::Delete(fullIniFilePath);
+	return true;
+}
+
+std::string Config::getGameConfigFile(const std::string &pGameId)
+{
+	std::string iniFileName = pGameId + "_psp.ini";
+	std::string iniFileNameFull = FindConfigFile(iniFileName);
+
+	return iniFileNameFull;
+}
+
+bool Config::saveGameConfig(const std::string &pGameId)
+{
+	if (pGameId.empty())
+	{
+		return false;
+	}
+
+	std::string fullIniFilePath = getGameConfigFile(pGameId);
+
+	IniFile iniFile;
+
+	for (size_t i = 0; i < ARRAY_SIZE(sections); ++i) {
+		IniFile::Section *section = iniFile.GetOrCreateSection(sections[i].section);
+		for (auto setting = sections[i].settings; setting->HasMore(); ++setting) {
+
+		}
+	}
+
+	KeyMap::SaveToIni(iniFile);
+	iniFile.Save(fullIniFilePath);
+
+	return true;
+}
+
+bool Config::loadGameConfig(const std::string &pGameId)
+{
+	std::string iniFileNameFull = getGameConfigFile(pGameId);
+
+	if (!hasGameConfig(pGameId))
+	{
+		INFO_LOG(LOADER, "Failed to read %s. No game-specific settings found, using global defaults.", iniFileNameFull.c_str());
+		return false;
+	}
+
+	changeGameSpecific(pGameId);
+	IniFile iniFile;
+	iniFile.Load(iniFileNameFull);
+
+
+	for (size_t i = 0; i < ARRAY_SIZE(sections); ++i) {
+		IniFile::Section *section = iniFile.GetOrCreateSection(sections[i].section);
+		for (auto setting = sections[i].settings; setting->HasMore(); ++setting) {
+
+		}
+	}
+	KeyMap::LoadFromIni(iniFile);
+	return true;
+}
+
+
+void Config::unloadGameConfig()
+{
+
 }
 
 void Config::ResetControlLayout() {

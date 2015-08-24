@@ -1,4 +1,4 @@
-// Copyright (c) 2013- PPSSPP Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,19 +12,17 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+
 
 #pragma once
 
 #include "base/functional.h"
+#include "file/path.h"
 #include "ui/ui_screen.h"
 #include "ui/viewgroup.h"
 #include "UI/MiscScreens.h"
 
-// Game screen: Allows you to start a game, delete saves, delete the game,
-// set game specific settings, etc.
-// Uses GameInfoCache heavily to implement the functionality.
+
 
 class MainScreen : public UIScreenWithBackground {
 public:
@@ -45,7 +43,7 @@ protected:
 
 private:
 	bool DrawBackgroundFor(UIContext &dc, const std::string &gamePath, float progress);
-
+	UI::EventReturn OnHomebrew(UI::EventParams &e);
 	UI::EventReturn OnGameSelected(UI::EventParams &e);
 	UI::EventReturn OnGameSelectedInstant(UI::EventParams &e);
 	UI::EventReturn OnGameHighlight(UI::EventParams &e);
@@ -61,7 +59,7 @@ private:
 	UI::EventReturn OnDownloadUpgrade(UI::EventParams &e);
 	UI::EventReturn OnDismissUpgrade(UI::EventParams &e);
 	UI::EventReturn OnHomebrewStore(UI::EventParams &e);
-
+	UI::EventReturn OnForum(UI::EventParams &e);
 	UI::LinearLayout *upgradeBar_;
 	UI::TabHolder *tabHolder_;
 
@@ -76,17 +74,28 @@ private:
 	bool UseVerticalLayout() const;
 };
 
-class GamePauseScreen : public UIDialogScreenWithGameBackground {
+
+
+
+
+class MAMainScreen : public UIDialogScreenWithGameBackground {
+
 public:
-	GamePauseScreen(const std::string &filename) : UIDialogScreenWithGameBackground(filename), saveSlots_(NULL) {}
-	virtual ~GamePauseScreen();
+	MAMainScreen(const std::string &filename) : UIDialogScreenWithGameBackground(filename), saveSlots_(NULL) {}
+	virtual ~MAMainScreen();
 
 	virtual void onFinish(DialogResult result);
+
+
+
+
+
 
 protected:
 	virtual void CreateViews();
 	virtual void update(InputState &input);
 	virtual void sendMessage(const char *message, const char *value);
+
 
 private:
 	UI::EventReturn OnMainSettings(UI::EventParams &e);
@@ -105,7 +114,18 @@ private:
 	UI::ChoiceStrip *saveSlots_;
 	UI::Choice *saveStateButton_;
 	UI::Choice *loadStateButton_;
+
 };
+
+
+
+
+
+
+
+
+
+
 
 class UmdReplaceScreen : public UIDialogScreenWithBackground {
 public:
@@ -114,7 +134,7 @@ public:
 protected:
 	virtual void CreateViews();
 	virtual void update(InputState &input);
-	//virtual void sendMessage(const char *message, const char *value);
+
 
 private:
 	UI::EventReturn OnGameSelected(UI::EventParams &e);

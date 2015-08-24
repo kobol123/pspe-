@@ -11,5 +11,5 @@ INCLUDEPATH += $$P
 	else: LIBS += $$files($$P/dx9sdk/Lib/x86/*.lib)
 
 	# Packaging
-	ICON = $$P/Windows/pspe+.rc
+	ICON = $$P/Windows/ppsspp.rc
 }

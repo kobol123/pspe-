@@ -1,4 +1,4 @@
-// Copyright (c) 2013- PPSSPP Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,8 +12,7 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+
 
 #include <vector>
 
@@ -167,6 +166,109 @@ private:
 	float &spacing_;
 };
 
+
+
+class PSPRight : public DragDropButton {
+public:
+	PSPRight(float &x, float &y, float &scale, float &spacing)
+		: DragDropButton(x, y, -1, -1, scale), spacing_(spacing) {
+		using namespace UI;
+		roundId_ = g_Config.iTouchButtonStyle ? I_ROUND_LINE : I_ROUND;
+		circleVisible_1 = triangleVisible_1 = squareVisible_1 = squareVisible_2 = crossVisible_1 = true;
+
+		circleId_1 = I_R;
+		crossId_1 = I_R;
+		triangleId_1 = I_R;
+		squareId_1 = I_R;
+
+
+	};
+
+	void setCircleVisibility1(bool visible){
+		circleVisible_1 = visible;
+	}
+
+	void setCrossVisibility1(bool visible){
+		crossVisible_1 = visible;
+	}
+
+	void setTriangleVisibility1(bool visible){
+		triangleVisible_1 = visible;
+	}
+
+	void setSquareVisibility1(bool visible){
+		squareVisible_1 = visible;
+	}
+	void setSquareVisibility2(bool visible){
+		squareVisible_2 = visible;
+	}
+	void Draw(UIContext &dc) {
+		float opacity = g_Config.iTouchButtonOpacity / 100.0f;
+
+		uint32_t colorBg = colorAlpha(GetButtonColor(), opacity);
+		uint32_t color = colorAlpha(0xFFFFFF, opacity);
+
+		int centerX = bounds_.centerX();
+		int centerY = bounds_.centerY();
+
+		float spacing = spacing_ * baseRightSpacing;
+		if (circleVisible_1) {
+			dc.Draw()->DrawImageRotated(roundId_, centerX + spacing, centerY, scale_, 0, colorBg, false);
+			dc.Draw()->DrawImageRotated(circleId_1, centerX + spacing, centerY, scale_, 0, color, false);
+		}
+
+		if (crossVisible_1) {
+			dc.Draw()->DrawImageRotated(roundId_, centerX, centerY + spacing, scale_, 0, colorBg, false);
+			dc.Draw()->DrawImageRotated(crossId_1, centerX, centerY + spacing, scale_, 0, color, false);
+		}
+
+		if (triangleVisible_1) {
+			float y = centerY - spacing;
+			y -= 2.8f * scale_;
+			dc.Draw()->DrawImageRotated(roundId_, centerX, centerY - spacing, scale_, 0, colorBg, false);
+			dc.Draw()->DrawImageRotated(triangleId_1, centerX, y, scale_, 0, color, false);
+		}
+
+		if (squareVisible_1) {
+			dc.Draw()->DrawImageRotated(roundId_, centerX - spacing, centerY, scale_, 0, colorBg, false);
+			dc.Draw()->DrawImageRotated(squareId_1, centerX - spacing, centerY, scale_, 0, color, false);
+		}
+
+		if (squareVisible_2) {
+			dc.Draw()->DrawImageRotated(roundId_, centerX - spacing/2, centerY -spacing/2, scale_, 0, colorBg, false);
+			dc.Draw()->DrawImageRotated(squareId_1, centerX - spacing/2, centerY -spacing/2, scale_, 0, color, false);
+		}
+
+	};
+
+	void GetContentDimensions(const UIContext &dc, float &w, float &h) const{
+		const AtlasImage &image = dc.Draw()->GetAtlas()->images[roundId_];
+
+		w = (2 * baseRightSpacing * spacing_) + image.w * scale_;
+		h = (2 * baseRightSpacing * spacing_) + image.h * scale_;
+	}
+
+	virtual float GetSpacing() const { return spacing_; }
+	virtual void SetSpacing(float s) { spacing_ = s; }
+
+	virtual void SavePosition() {
+		DragDropButton::SavePosition();
+	}
+
+private:
+	bool circleVisible_1, crossVisible_1, triangleVisible_1, squareVisible_1, squareVisible_2;
+
+	int roundId_;
+
+	int circleId_1, crossId_1, triangleId_1, squareId_1;
+	float &spacing_;
+
+
+};
+
+
+
+
 class PSPDPadButtons : public DragDropButton {
 public:
 	PSPDPadButtons(float &x, float &y, float &scale, float &spacing)
@@ -310,20 +412,18 @@ void TouchControlLayoutScreen::CreateViews() {
 
 	using namespace UI;
 
-	I18NCategory *c = GetI18NCategory("Controls");
-	I18NCategory *d = GetI18NCategory("Dialog");
+	I18NCategory *co = GetI18NCategory("Controls");
+	I18NCategory *di = GetI18NCategory("Dialog");
 
 	root_ = new AnchorLayout(new LayoutParams(FILL_PARENT, FILL_PARENT));
 
-	Choice *reset = new Choice(d->T("Reset"), "", false, new AnchorLayoutParams(leftColumnWidth, WRAP_CONTENT, 10, NONE, NONE, 84));
-	Choice *back = new Choice(d->T("Back"), "", false, new AnchorLayoutParams(leftColumnWidth, WRAP_CONTENT, 10, NONE, NONE, 10));
-	Choice *visibility = new Choice(c->T("Visibility"), "", false, new AnchorLayoutParams(leftColumnWidth, WRAP_CONTENT, 10, NONE, NONE, 158));
-	// controlsSettings->Add(new PopupSliderChoiceFloat(&g_Config.fButtonScale, 0.80, 2.0, c->T("Button Scaling"), screenManager()))
-	// 	->OnChange.Handle(this, &GameSettingsScreen::OnChangeControlScaling);
+	Choice *reset = new Choice(di->T("Reset"), "", false, new AnchorLayoutParams(leftColumnWidth, WRAP_CONTENT, 10, NONE, NONE, 84));
+	Choice *back = new Choice(di->T("Back"), "", false, new AnchorLayoutParams(leftColumnWidth, WRAP_CONTENT, 10, NONE, NONE, 10));
+	Choice *visibility = new Choice(co->T("Visibility"), "", false, new AnchorLayoutParams(leftColumnWidth, WRAP_CONTENT, 10, NONE, NONE, 158));
 
 	mode_ = new ChoiceStrip(ORIENT_VERTICAL, new AnchorLayoutParams(leftColumnWidth, WRAP_CONTENT, 10, NONE, NONE, 158 + 64 + 10));
-	mode_->AddChoice(d->T("Move"));
-	mode_->AddChoice(d->T("Resize"));
+	mode_->AddChoice(di->T("Move"));
+	mode_->AddChoice(di->T("Resize"));
 	mode_->SetSelection(0);
 
 	reset->OnClick.Handle(this, &TouchControlLayoutScreen::OnReset);
@@ -354,15 +454,35 @@ void TouchControlLayoutScreen::CreateViews() {
 	controls_.clear();
 
 	PSPActionButtons *actionButtons = new PSPActionButtons(g_Config.fActionButtonCenterX, g_Config.fActionButtonCenterY, g_Config.fActionButtonScale, g_Config.fActionButtonSpacing);
+	PSPRight *actionButtons1 = new PSPRight(g_Config.fActionButtonCenterX, g_Config.fActionButtonCenterY, g_Config.fActionButtonScale, g_Config.fActionButtonSpacing);
 	actionButtons->setCircleVisibility(g_Config.bShowTouchCircle);
 	actionButtons->setCrossVisibility(g_Config.bShowTouchCross);
 	actionButtons->setTriangleVisibility(g_Config.bShowTouchTriangle);
 	actionButtons->setSquareVisibility(g_Config.bShowTouchSquare);
 
+
+
+	actionButtons1->setCircleVisibility1(g_Config.bShowTouchRTrigger);
+		actionButtons1->setCrossVisibility1(g_Config.bShowTouchRTrigger);
+		actionButtons1->setTriangleVisibility1(g_Config.bShowTouchRTrigger);
+		actionButtons1->setSquareVisibility1(g_Config.bShowTouchRTrigger);
+		actionButtons1->setSquareVisibility2(g_Config.bShowTouchRTrigger);
+
+
+
+
+
+
 	controls_.push_back(actionButtons);
 
+	controls_.push_back(actionButtons1);
+
 	int rectImage = g_Config.iTouchButtonStyle ? I_RECT_LINE : I_RECT;
-	int shoulderImage = g_Config.iTouchButtonStyle ? I_SHOULDER_LINE : I_SHOULDER;
+	int leftImage = g_Config.iTouchButtonStyle ? I_LEFT : I_LEFT;
+		int rightImage = g_Config.iTouchButtonStyle ? I_RIGHT : I_RIGHT;
+
+
+
 	int dirImage = g_Config.iTouchButtonStyle ? I_DIR_LINE : I_DIR;
 	int stickImage = g_Config.iTouchButtonStyle ? I_STICK_LINE : I_STICK;
 	int stickBg = g_Config.iTouchButtonStyle ? I_STICK_BG_LINE : I_STICK_BG;
@@ -386,14 +506,10 @@ void TouchControlLayoutScreen::CreateViews() {
 	}
 
 	if (g_Config.bShowTouchLTrigger) {
-		controls_.push_back(new DragDropButton(g_Config.fLKeyX, g_Config.fLKeyY, shoulderImage, I_L, g_Config.fLKeyScale));
+		controls_.push_back(new DragDropButton(g_Config.fLKeyX, g_Config.fLKeyY, leftImage, I_L, g_Config.fLKeyScale));
 	}
 
-	if (g_Config.bShowTouchRTrigger) {
-		DragDropButton *rbutton = new DragDropButton(g_Config.fRKeyX, g_Config.fRKeyY, shoulderImage, I_R, g_Config.fRKeyScale);
-		rbutton->FlipImageH(true);
-		controls_.push_back(rbutton);
-	}
+
 
 	if (g_Config.bShowTouchAnalogStick) {
 		controls_.push_back(new DragDropButton(g_Config.fAnalogStickX, g_Config.fAnalogStickY, stickBg, stickImage, g_Config.fAnalogStickScale));

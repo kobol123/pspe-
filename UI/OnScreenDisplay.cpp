@@ -1,3 +1,20 @@
+// Copyright (c) 2015- PSPe+ Project.
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, version 2.0 or later versions.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License 2.0 for more details.
+
+// A copy of the GPL 2.0 should have been included with the program.
+// If not, see http://www.gnu.org/licenses/
+
+
+
+
 #include "UI/OnScreenDisplay.h"
 #include "UI/ui_atlas.h"
 
@@ -5,12 +22,44 @@
 #include "base/timeutil.h"
 #include "gfx_es2/draw_buffer.h"
 
+#include "ui/ui_context.h"
+
 OnScreenMessages osm;
 
-void OnScreenMessages::Draw(DrawBuffer &draw, const Bounds &bounds) {
+void OnScreenMessagesView::Draw(UIContext &dc) {
 	// First, clean out old messages.
-	std::lock_guard<std::recursive_mutex> guard(mutex_);
+	osm.Lock();
+	osm.Clean();
 
+	// Get height
+	float w, h;
+	dc.MeasureText(dc.theme->uiFont, "Wg", &w, &h);
+
+	float y = 10.0f;
+	// Then draw them all. 
+	const std::list<OnScreenMessages::Message> &messages = osm.Messages();
+	for (auto iter = messages.begin(); iter != messages.end(); ++iter) {
+		float alpha = (iter->endTime - time_now_d()) * 4.0f;
+		if (alpha > 1.0) alpha = 1.0f;
+		if (alpha < 0.0) alpha = 0.0f;
+		// Messages that are wider than the screen are left-aligned instead of centered.
+		float tw, th;
+		dc.MeasureText(dc.theme->uiFont, iter->text.c_str(), &tw, &th);
+		float x = bounds_.centerX();
+		int align = ALIGN_TOP | ALIGN_HCENTER;
+		if (tw > bounds_.w) {
+			align = ALIGN_TOP | ALIGN_LEFT;
+			x = 2;
+		}
+		dc.SetFontStyle(dc.theme->uiFont);
+		dc.DrawTextShadow(iter->text.c_str(), x, y, colorAlpha(iter->color, alpha), align);
+		y += h;
+	}
+
+	osm.Unlock();
+}
+
+void OnScreenMessages::Clean() {
 restart:
 	double now = time_now_d();
 	for (auto iter = messages_.begin(); iter != messages_.end(); iter++) {
@@ -18,29 +67,6 @@ restart:
 			messages_.erase(iter);
 			goto restart;
 		}
-	}
-
-	// Get height
-	float w, h;
-	draw.MeasureText(UBUNTU24, "Wg", &w, &h);
-
-	float y = 10.0f;
-	// Then draw them all. 
-	for (auto iter = messages_.begin(); iter != messages_.end(); ++iter) {
-		float alpha = (iter->endTime - time_now_d()) * 4.0f;
-		if (alpha > 1.0) alpha = 1.0f;
-		if (alpha < 0.0) alpha = 0.0f;
-		// Messages that are wider than the screen are left-aligned instead of centered.
-		float tw, th;
-		draw.MeasureText(UBUNTU24, iter->text.c_str(), &tw, &th);
-		float x = bounds.centerX();
-		int align = ALIGN_TOP | ALIGN_HCENTER;
-		if (tw > bounds.w) {
-			align = ALIGN_TOP | ALIGN_LEFT;
-			x = 2;
-		}
-		draw.DrawTextShadow(UBUNTU24, iter->text.c_str(), x, y, colorAlpha(iter->color, alpha), align);
-		y += h;
 	}
 }
 

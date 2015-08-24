@@ -1,4 +1,4 @@
-// Copyright (c) 2012- PSPe+ Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,14 +12,13 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official git repository and contact information can be found at
-//
+
 
 #include <algorithm>
 #include "Core/HLE/HLE.h"
 #include "Core/MIPS/MIPS.h"
 #include "Core/CoreTiming.h"
-#include "Core/MemMap.h"
+#include "Core/MemMapHelpers.h"
 #include "Core/Reporting.h"
 #include "Common/ChunkFile.h"
 #include "Core/HLE/sceKernel.h"
@@ -55,14 +54,14 @@ struct NativeSemaphore
 
 struct Semaphore : public KernelObject 
 {
-	const char *GetName() {return ns.name;}
-	const char *GetTypeName() {return "Semaphore";}
+	const char *GetName() override { return ns.name; }
+	const char *GetTypeName() override { return "Semaphore"; }
 
 	static u32 GetMissingErrorCode() { return SCE_KERNEL_ERROR_UNKNOWN_SEMID; }
 	static int GetStaticIDType() { return SCE_KERNEL_TMID_Semaphore; }
-	int GetIDType() const { return SCE_KERNEL_TMID_Semaphore; }
+	int GetIDType() const override { return SCE_KERNEL_TMID_Semaphore; }
 
-	virtual void DoState(PointerWrap &p)
+	void DoState(PointerWrap &p) override
 	{
 		auto s = p.Section("Semaphore", 1);
 		if (!s)
@@ -107,7 +106,7 @@ KernelObject *__KernelSemaphoreObject()
 }
 
 // Returns whether the thread should be removed.
-bool __KernelUnlockSemaForThread(Semaphore *s, SceUID threadID, u32 &error, int result, bool &wokeThreads)
+static bool __KernelUnlockSemaForThread(Semaphore *s, SceUID threadID, u32 &error, int result, bool &wokeThreads)
 {
 	if (!HLEKernel::VerifyWait(threadID, WAITTYPE_SEMA, s->GetUID()))
 		return true;
@@ -131,27 +130,9 @@ bool __KernelUnlockSemaForThread(Semaphore *s, SceUID threadID, u32 &error, int 
 			cyclesLeft = 0;
 		Memory::Write_U32((u32) cyclesToUs(cyclesLeft), timeoutPtr);
 	}
-	
-	
-	
-////// keep clear before resume.
 
-
-
-retry: 
-	for (auto iter = s->waitingThreads.begin(), end = s->waitingThreads.end(); iter != end; ++iter) 
-	{ 
-			s->waitingThreads.erase(iter); 
-				goto retry; 
-			} 
-		} 
 	__KernelResumeThreadFromWait(threadID, result);
 	wokeThreads = true;
-	
-	
-
-	
-	
 	return true;
 }
 
@@ -173,7 +154,7 @@ void __KernelSemaEndCallback(SceUID threadID, SceUID prevCallbackId)
 
 // Resume all waiting threads (for delete / cancel.)
 // Returns true if it woke any threads.
-bool __KernelClearSemaThreads(Semaphore *s, int reason)
+static bool __KernelClearSemaThreads(Semaphore *s, int reason)
 {
 	u32 error;
 	bool wokeThreads = false;
@@ -326,22 +307,31 @@ int sceKernelSignalSema(SceUID id, int signal)
 
 		bool wokeThreads = false;
 
-
-
-///Why removing threads with no events? What a loop.........
-
-
+		if (!g_Config.bThreadHackb){
 
 retry:
 		for (auto iter = s->waitingThreads.begin(), end = s->waitingThreads.end(); iter != end; ++iter)
 		{
-//			if (__KernelUnlockSemaForThread(s, *iter, error, 0, wokeThreads))
-//			{
+			if (__KernelUnlockSemaForThread(s, *iter, error, 0, wokeThreads))
+			{
 				s->waitingThreads.erase(iter);
 				goto retry;
-//			}
+			}
 		}
+		}else{
 
+				retry2:
+						for (auto iter = s->waitingThreads.begin(), end = s->waitingThreads.end(); iter != end; ++iter)
+						{
+
+								s->waitingThreads.erase(iter);
+							goto retry2;
+
+						}
+
+
+
+				}
 		if (wokeThreads)
 			hleReSchedule("semaphore signaled");
 
@@ -376,7 +366,7 @@ void __KernelSemaTimeout(u64 userdata, int cycleslate)
 	}
 }
 
-void __KernelSetSemaTimeout(Semaphore *s, u32 timeoutPtr)
+static void __KernelSetSemaTimeout(Semaphore *s, u32 timeoutPtr)
 {
 	if (timeoutPtr == 0 || semaWaitTimer == -1)
 		return;
@@ -393,7 +383,7 @@ void __KernelSetSemaTimeout(Semaphore *s, u32 timeoutPtr)
 	CoreTiming::ScheduleEvent(usToCycles(micro), semaWaitTimer, __KernelGetCurThread());
 }
 
-int __KernelWaitSema(SceUID id, int wantedCount, u32 timeoutPtr, bool processCallbacks)
+static int __KernelWaitSema(SceUID id, int wantedCount, u32 timeoutPtr, bool processCallbacks)
 {
 	hleEatCycles(900);
 
@@ -412,15 +402,21 @@ int __KernelWaitSema(SceUID id, int wantedCount, u32 timeoutPtr, bool processCal
 		// If there are any callbacks, we always wait, and wake after the callbacks.
 		bool hasCallbacks = processCallbacks && __KernelCurHasReadyCallbacks();
 		if (s->ns.currentCount >= wantedCount && s->waitingThreads.size() == 0 && !hasCallbacks)
+
+
 		{
-			if (hasCallbacks)
-			{
-				// Might actually end up having to wait, so set the timeout.
-				__KernelSetSemaTimeout(s, timeoutPtr);
-				__KernelWaitCallbacksCurThread(WAITTYPE_SEMA, id, wantedCount, timeoutPtr);
-			}
-			else
-				s->ns.currentCount -= wantedCount;
+					if (hasCallbacks)
+					{
+						// Might actually end up having to wait, so set the timeout.
+						__KernelSetSemaTimeout(s, timeoutPtr);
+						__KernelWaitCallbacksCurThread(WAITTYPE_SEMA, id, wantedCount, timeoutPtr);
+					}
+					else
+
+
+
+			s->ns.currentCount -= wantedCount;
+
 		}
 		else
 		{

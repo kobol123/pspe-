@@ -7,7 +7,7 @@ QMAKE_CXXFLAGS += -marm -Wno-parentheses -Wno-comment -Wno-unused-local-typedefs
 
 	# Packaging
 	TARGET.UID3 = 0xE0095B1D
-	DEPLOYMENT.display_name = PSPE
+	DEPLOYMENT.display_name = PPSSPP
 	vendor_deploy.pkg_prerules = "%{\"Qtness\"}" ":\"Qtness\""
 	ICON = $$P/assets/icon.svg
 

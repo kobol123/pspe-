@@ -1,4 +1,4 @@
-// Copyright (c) 2013- PPSSPP Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,8 +12,7 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+
 
 #include <algorithm>
 #include <deque>
@@ -202,20 +201,20 @@ void ControlMappingScreen::CreateViews() {
 	using namespace UI;
 	mappers_.clear();
 
-	I18NCategory *k = GetI18NCategory("KeyMapping");
-	I18NCategory *d = GetI18NCategory("Dialog");
+	I18NCategory *km = GetI18NCategory("KeyMapping");
+	I18NCategory *di = GetI18NCategory("Dialog");
 
 	root_ = new LinearLayout(ORIENT_HORIZONTAL);
 
-	LinearLayout *leftColumn = new LinearLayout(ORIENT_VERTICAL, new LinearLayoutParams(200, FILL_PARENT));
-	leftColumn->Add(new Choice(k->T("Clear All")))->OnClick.Handle(this, &ControlMappingScreen::OnClearMapping);
-	leftColumn->Add(new Choice(k->T("Default All")))->OnClick.Handle(this, &ControlMappingScreen::OnDefaultMapping);
+	LinearLayout *leftColumn = new LinearLayout(ORIENT_VERTICAL, new LinearLayoutParams(200, FILL_PARENT, Margins(10, 0, 0, 10)));
+	leftColumn->Add(new Choice(km->T("Clear All")))->OnClick.Handle(this, &ControlMappingScreen::OnClearMapping);
+	leftColumn->Add(new Choice(km->T("Default All")))->OnClick.Handle(this, &ControlMappingScreen::OnDefaultMapping);
 	if (KeyMap::GetSeenPads().size()) {
-		leftColumn->Add(new Choice(k->T("Autoconfigure")))->OnClick.Handle(this, &ControlMappingScreen::OnAutoConfigure);
+		leftColumn->Add(new Choice(km->T("Autoconfigure")))->OnClick.Handle(this, &ControlMappingScreen::OnAutoConfigure);
 	}
-	leftColumn->Add(new Choice(k->T("Test Analogs")))->OnClick.Handle(this, &ControlMappingScreen::OnTestAnalogs);
+	leftColumn->Add(new Choice(km->T("Test Analogs")))->OnClick.Handle(this, &ControlMappingScreen::OnTestAnalogs);
 	leftColumn->Add(new Spacer(new LinearLayoutParams(1.0f)));
-	leftColumn->Add(new Choice(d->T("Back")))->OnClick.Handle<UIScreen>(this, &UIScreen::OnBack);
+	//AddStandardBack(leftColumn);
 
 	rightScroll_ = new ScrollView(ORIENT_VERTICAL, new LinearLayoutParams(1.0f));
 	rightScroll_->SetScrollToTop(false);
@@ -260,8 +259,8 @@ UI::EventReturn ControlMappingScreen::OnAutoConfigure(UI::EventParams &params) {
 	for (auto s = seenPads.begin(), end = seenPads.end(); s != end; ++s) {
 		items.push_back(*s);
 	}
-	I18NCategory *keyI18N = GetI18NCategory("KeyMapping");
-	ListPopupScreen *autoConfList = new ListPopupScreen(keyI18N->T("Autoconfigure for device"), items, -1);
+	I18NCategory *km = GetI18NCategory("KeyMapping");
+	ListPopupScreen *autoConfList = new ListPopupScreen(km->T("Autoconfigure for device"), items, -1);
 	screenManager()->push(autoConfList);
 	return UI::EVENT_DONE;
 }
@@ -289,11 +288,11 @@ void ControlMappingScreen::KeyMapped(int pspkey) {  // Notification to let us re
 void KeyMappingNewKeyDialog::CreatePopupContents(UI::ViewGroup *parent) {
 	using namespace UI;
 
-	I18NCategory *keyI18N = GetI18NCategory("KeyMapping");
+	I18NCategory *km = GetI18NCategory("KeyMapping");
 
 	std::string pspButtonName = KeyMap::GetPspButtonName(this->pspBtn_);
 
-	parent->Add(new TextView(std::string(keyI18N->T("Map a new key for")) + " " + pspButtonName, new LinearLayoutParams(Margins(10,0))));
+	parent->Add(new TextView(std::string(km->T("Map a new key for")) + " " + pspButtonName, new LinearLayoutParams(Margins(10,0))));
 }
 
 bool KeyMappingNewKeyDialog::key(const KeyInput &key) {
@@ -416,15 +415,30 @@ void JoystickHistoryView::Draw(UIContext &dc) {
 
 void JoystickHistoryView::Update(const InputState &input_state) {
 	locations_.push_back(Location(curX_, curY_));
-	if (locations_.size() > maxCount_) {
+	if ((int)locations_.size() > maxCount_) {
 		locations_.pop_front();
 	}
 }
 
-void AnalogTestScreen::CreateViews() {
-	root_ = new UI::LinearLayout(UI::ORIENT_VERTICAL);
+bool AnalogTestScreen::key(const KeyInput &key) {
+	char buf[512];
+	snprintf(buf, sizeof(buf), "Keycode: %d Device ID: %d [%s%s%s%s]", key.keyCode, key.deviceId,
+		(key.flags & KEY_IS_REPEAT) ? "REP" : "",
+		(key.flags & KEY_UP) ? "UP" : "",
+		(key.flags & KEY_DOWN) ? "DOWN" : "",
+		(key.flags & KEY_CHAR) ? "CHAR" : "");
+	lastKeyEvent_->SetText(buf);
+	return true;
+}
 
-	UI::LinearLayout *theTwo = new UI::LinearLayout(UI::ORIENT_HORIZONTAL, new UI::LinearLayoutParams(1.0f));
+void AnalogTestScreen::CreateViews() {
+	using namespace UI;
+
+	I18NCategory *di = GetI18NCategory("Dialog");
+
+	root_ = new LinearLayout(ORIENT_VERTICAL);
+
+	LinearLayout *theTwo = new LinearLayout(ORIENT_HORIZONTAL, new LinearLayoutParams(1.0f));
 
 	int axis1, device1, dir1;
 	int axis2, device2, dir2;
@@ -432,14 +446,16 @@ void AnalogTestScreen::CreateViews() {
 	if (!KeyMap::AxisFromPspButton(VIRTKEY_AXIS_X_MAX, &device1, &axis1, &dir1)) axis1 = -1;
 	if (!KeyMap::AxisFromPspButton(VIRTKEY_AXIS_Y_MAX, &device2, &axis2, &dir2)) axis2 = -1;
 
-	theTwo->Add(new JoystickHistoryView(axis1, device1, axis2, device2, new UI::LinearLayoutParams(1.0f)));
+	theTwo->Add(new JoystickHistoryView(axis1, device1, axis2, device2, new LinearLayoutParams(1.0f)));
 
 	if (!KeyMap::AxisFromPspButton(VIRTKEY_AXIS_RIGHT_X_MAX, &device1, &axis1, &dir1)) axis1 = -1;
 	if (!KeyMap::AxisFromPspButton(VIRTKEY_AXIS_RIGHT_Y_MAX, &device2, &axis2, &dir2)) axis2 = -1;
 
-	theTwo->Add(new JoystickHistoryView(axis1, device1, axis2, device2, new UI::LinearLayoutParams(1.0f)));
+	theTwo->Add(new JoystickHistoryView(axis1, device1, axis2, device2, new LinearLayoutParams(1.0f)));
 
 	root_->Add(theTwo);
 
-	root_->Add(new UI::Button("Back"))->OnClick.Handle<UIScreen>(this, &UIScreen::OnBack);
+	lastKeyEvent_ = root_->Add(new TextView("", new LayoutParams(FILL_PARENT, WRAP_CONTENT)));
+
+	root_->Add(new Button(di->T("Back")))->OnClick.Handle<UIScreen>(this, &UIScreen::OnBack);
 }

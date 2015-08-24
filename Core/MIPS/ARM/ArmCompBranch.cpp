@@ -15,6 +15,8 @@
 // Official git repository and contact information can be found at
 // https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
 
+#include "profiler/profiler.h"
+
 #include "Core/Reporting.h"
 #include "Core/Config.h"
 #include "Core/MemMap.h"
@@ -54,17 +56,19 @@ using namespace MIPSAnalyst;
 
 namespace MIPSComp
 {
+	using namespace ArmGen;
+	using namespace ArmJitConstants;
 
-void Jit::BranchRSRTComp(MIPSOpcode op, ArmGen::CCFlags cc, bool likely)
+void ArmJit::BranchRSRTComp(MIPSOpcode op, CCFlags cc, bool likely)
 {
 	if (js.inDelaySlot) {
-		ERROR_LOG_REPORT(JIT, "Branch in RSRTComp delay slot at %08x in block starting at %08x", js.compilerPC, js.blockStart);
+		ERROR_LOG_REPORT(JIT, "Branch in RSRTComp delay slot at %08x in block starting at %08x", GetCompilerPC(), js.blockStart);
 		return;
 	}
 	int offset = _IMM16 << 2;
 	MIPSGPReg rt = _RT;
 	MIPSGPReg rs = _RS;
-	u32 targetAddr = js.compilerPC + offset + 4;
+	u32 targetAddr = GetCompilerPC() + offset + 4;
 
 	bool immBranch = false;
 	bool immBranchTaken = false;
@@ -102,7 +106,7 @@ void Jit::BranchRSRTComp(MIPSOpcode op, ArmGen::CCFlags cc, bool likely)
 		return;
 	}
 
-	MIPSOpcode delaySlotOp = Memory::Read_Instruction(js.compilerPC+4);
+	MIPSOpcode delaySlotOp = GetOffsetInstruction(1);
 	bool delaySlotIsNice = IsDelaySlotNiceReg(op, delaySlotOp, rt, rs);
 	CONDITIONAL_NICE_DELAYSLOT;
 
@@ -113,7 +117,7 @@ void Jit::BranchRSRTComp(MIPSOpcode op, ArmGen::CCFlags cc, bool likely)
 		else
 			FlushAll();
 
-		const u32 destAddr = immBranchTaken ? targetAddr : js.compilerPC + 8;
+		const u32 destAddr = immBranchTaken ? targetAddr : GetCompilerPC() + 8;
 		WriteExit(destAddr, js.nextExit++);
 	} else {
 		if (!likely && delaySlotIsNice)
@@ -161,22 +165,22 @@ void Jit::BranchRSRTComp(MIPSOpcode op, ArmGen::CCFlags cc, bool likely)
 
 		SetJumpTarget(ptr);
 		// Not taken
-		WriteExit(js.compilerPC + 8, js.nextExit++);
+		WriteExit(GetCompilerPC() + 8, js.nextExit++);
 	}
 
 	js.compiling = false;
 }
 
 
-void Jit::BranchRSZeroComp(MIPSOpcode op, ArmGen::CCFlags cc, bool andLink, bool likely)
+void ArmJit::BranchRSZeroComp(MIPSOpcode op, CCFlags cc, bool andLink, bool likely)
 {
 	if (js.inDelaySlot) {
-		ERROR_LOG_REPORT(JIT, "Branch in RSZeroComp delay slot at %08x in block starting at %08x", js.compilerPC, js.blockStart);
+		ERROR_LOG_REPORT(JIT, "Branch in RSZeroComp delay slot at %08x in block starting at %08x", GetCompilerPC(), js.blockStart);
 		return;
 	}
 	int offset = _IMM16 << 2;
 	MIPSGPReg rs = _RS;
-	u32 targetAddr = js.compilerPC + offset + 4;
+	u32 targetAddr = GetCompilerPC() + offset + 4;
 
 	bool immBranch = false;
 	bool immBranchTaken = false;
@@ -208,7 +212,7 @@ void Jit::BranchRSZeroComp(MIPSOpcode op, ArmGen::CCFlags cc, bool andLink, bool
 		// Branch taken.  Always compile the delay slot, and then go to dest.
 		CompileDelaySlot(DELAYSLOT_NICE);
 		if (andLink)
-			gpr.SetImm(MIPS_REG_RA, js.compilerPC + 8);
+			gpr.SetImm(MIPS_REG_RA, GetCompilerPC() + 8);
 
 		AddContinuedBlock(targetAddr);
 		// Account for the increment in the loop.
@@ -218,20 +222,20 @@ void Jit::BranchRSZeroComp(MIPSOpcode op, ArmGen::CCFlags cc, bool andLink, bool
 		return;
 	}
 
-	MIPSOpcode delaySlotOp = Memory::Read_Instruction(js.compilerPC + 4);
+	MIPSOpcode delaySlotOp = GetOffsetInstruction(1);
 	bool delaySlotIsNice = IsDelaySlotNiceReg(op, delaySlotOp, rs);
 	CONDITIONAL_NICE_DELAYSLOT;
 
 	if (immBranch) {
 		// Continuing is handled above, this is just static jumping.
 		if (immBranchTaken && andLink)
-			gpr.SetImm(MIPS_REG_RA, js.compilerPC + 8);
+			gpr.SetImm(MIPS_REG_RA, GetCompilerPC() + 8);
 		if (immBranchTaken || !likely)
 			CompileDelaySlot(DELAYSLOT_FLUSH);
 		else
 			FlushAll();
 
-		const u32 destAddr = immBranchTaken ? targetAddr : js.compilerPC + 8;
+		const u32 destAddr = immBranchTaken ? targetAddr : GetCompilerPC() + 8;
 		WriteExit(destAddr, js.nextExit++);
 	} else {
 		if (!likely && delaySlotIsNice)
@@ -259,7 +263,7 @@ void Jit::BranchRSZeroComp(MIPSOpcode op, ArmGen::CCFlags cc, bool andLink, bool
 		// Take the branch
 		if (andLink)
 		{
-			gpr.SetRegImm(SCRATCHREG1, js.compilerPC + 8);
+			gpr.SetRegImm(SCRATCHREG1, GetCompilerPC() + 8);
 			STR(SCRATCHREG1, CTXREG, MIPS_REG_RA * 4);
 		}
 
@@ -267,13 +271,13 @@ void Jit::BranchRSZeroComp(MIPSOpcode op, ArmGen::CCFlags cc, bool andLink, bool
 
 		SetJumpTarget(ptr);
 		// Not taken
-		WriteExit(js.compilerPC + 8, js.nextExit++);
+		WriteExit(GetCompilerPC() + 8, js.nextExit++);
 	}
 	js.compiling = false;
 }
 
 
-void Jit::Comp_RelBranch(MIPSOpcode op)
+void ArmJit::Comp_RelBranch(MIPSOpcode op)
 {
 	// The CC flags here should be opposite of the actual branch becuase they skip the branching action.
 	switch (op >> 26)
@@ -296,7 +300,7 @@ void Jit::Comp_RelBranch(MIPSOpcode op)
 	}
 }
 
-void Jit::Comp_RelBranchRI(MIPSOpcode op)
+void ArmJit::Comp_RelBranchRI(MIPSOpcode op)
 {
 	switch ((op >> 16) & 0x1F)
 	{
@@ -315,16 +319,16 @@ void Jit::Comp_RelBranchRI(MIPSOpcode op)
 }
 
 // If likely is set, discard the branch slot if NOT taken.
-void Jit::BranchFPFlag(MIPSOpcode op, ArmGen::CCFlags cc, bool likely)
+void ArmJit::BranchFPFlag(MIPSOpcode op, CCFlags cc, bool likely)
 {
 	if (js.inDelaySlot) {
-		ERROR_LOG_REPORT(JIT, "Branch in FPFlag delay slot at %08x in block starting at %08x", js.compilerPC, js.blockStart);
+		ERROR_LOG_REPORT(JIT, "Branch in FPFlag delay slot at %08x in block starting at %08x", GetCompilerPC(), js.blockStart);
 		return;
 	}
 	int offset = _IMM16 << 2;
-	u32 targetAddr = js.compilerPC + offset + 4;
+	u32 targetAddr = GetCompilerPC() + offset + 4;
 
-	MIPSOpcode delaySlotOp = Memory::Read_Instruction(js.compilerPC + 4);
+	MIPSOpcode delaySlotOp = GetOffsetInstruction(1);
 	bool delaySlotIsNice = IsDelaySlotNiceFPU(op, delaySlotOp);
 	CONDITIONAL_NICE_DELAYSLOT;
 	if (!likely && delaySlotIsNice)
@@ -354,11 +358,11 @@ void Jit::BranchFPFlag(MIPSOpcode op, ArmGen::CCFlags cc, bool likely)
 
 	SetJumpTarget(ptr);
 	// Not taken
-	WriteExit(js.compilerPC + 8, js.nextExit++);
+	WriteExit(GetCompilerPC() + 8, js.nextExit++);
 	js.compiling = false;
 }
 
-void Jit::Comp_FPUBranch(MIPSOpcode op)
+void ArmJit::Comp_FPUBranch(MIPSOpcode op)
 {
 	switch((op >> 16) & 0x1f)
 	{
@@ -373,16 +377,16 @@ void Jit::Comp_FPUBranch(MIPSOpcode op)
 }
 
 // If likely is set, discard the branch slot if NOT taken.
-void Jit::BranchVFPUFlag(MIPSOpcode op, ArmGen::CCFlags cc, bool likely)
+void ArmJit::BranchVFPUFlag(MIPSOpcode op, CCFlags cc, bool likely)
 {
 	if (js.inDelaySlot) {
-		ERROR_LOG_REPORT(JIT, "Branch in VFPU delay slot at %08x in block starting at %08x", js.compilerPC, js.blockStart);
+		ERROR_LOG_REPORT(JIT, "Branch in VFPU delay slot at %08x in block starting at %08x", GetCompilerPC(), js.blockStart);
 		return;
 	}
 	int offset = _IMM16 << 2;
-	u32 targetAddr = js.compilerPC + offset + 4;
+	u32 targetAddr = GetCompilerPC() + offset + 4;
 
-	MIPSOpcode delaySlotOp = Memory::Read_Instruction(js.compilerPC + 4);
+	MIPSOpcode delaySlotOp = GetOffsetInstruction(1);
 
 	// Sometimes there's a VFPU branch in a delay slot (Disgaea 2: Dark Hero Days, Zettai Hero Project, La Pucelle)
 	// The behavior is undefined - the CPU may take the second branch even if the first one passes.
@@ -393,7 +397,7 @@ void Jit::BranchVFPUFlag(MIPSOpcode op, ArmGen::CCFlags cc, bool likely)
 	if (!likely && delaySlotIsNice)
 		CompileDelaySlot(DELAYSLOT_NICE);
 	if (delaySlotIsBranch && (signed short)(delaySlotOp & 0xFFFF) != (signed short)(op & 0xFFFF) - 1)
-		ERROR_LOG_REPORT(JIT, "VFPU branch in VFPU delay slot at %08x with different target", js.compilerPC);
+		ERROR_LOG_REPORT(JIT, "VFPU branch in VFPU delay slot at %08x with different target", GetCompilerPC());
 
 	int imm3 = (op >> 18) & 7;
 
@@ -424,12 +428,12 @@ void Jit::BranchVFPUFlag(MIPSOpcode op, ArmGen::CCFlags cc, bool likely)
 
 	SetJumpTarget(ptr);
 	// Not taken
-	u32 notTakenTarget = js.compilerPC + (delaySlotIsBranch ? 4 : 8);
+	u32 notTakenTarget = GetCompilerPC() + (delaySlotIsBranch ? 4 : 8);
 	WriteExit(notTakenTarget, js.nextExit++);
 	js.compiling = false;
 }
 
-void Jit::Comp_VBranch(MIPSOpcode op)
+void ArmJit::Comp_VBranch(MIPSOpcode op)
 {
 	switch ((op >> 16) & 3)
 	{
@@ -440,13 +444,13 @@ void Jit::Comp_VBranch(MIPSOpcode op)
 	}
 }
 
-void Jit::Comp_Jump(MIPSOpcode op) {
+void ArmJit::Comp_Jump(MIPSOpcode op) {
 	if (js.inDelaySlot) {
-		ERROR_LOG_REPORT(JIT, "Branch in Jump delay slot at %08x in block starting at %08x", js.compilerPC, js.blockStart);
+		ERROR_LOG_REPORT(JIT, "Branch in Jump delay slot at %08x in block starting at %08x", GetCompilerPC(), js.blockStart);
 		return;
 	}
 	u32 off = _IMM26 << 2;
-	u32 targetAddr = (js.compilerPC & 0xF0000000) | off;
+	u32 targetAddr = (GetCompilerPC() & 0xF0000000) | off;
 
 	// Might be a stubbed address or something?
 	if (!Memory::IsValidAddress(targetAddr)) {
@@ -478,7 +482,7 @@ void Jit::Comp_Jump(MIPSOpcode op) {
 		if (ReplaceJalTo(targetAddr))
 			return;
 
-		gpr.SetImm(MIPS_REG_RA, js.compilerPC + 8);
+		gpr.SetImm(MIPS_REG_RA, GetCompilerPC() + 8);
 		CompileDelaySlot(DELAYSLOT_NICE);
 		if (jo.continueJumps && js.numInstructions < jo.continueMaxInstructions) {
 			AddContinuedBlock(targetAddr);
@@ -499,17 +503,17 @@ void Jit::Comp_Jump(MIPSOpcode op) {
 	js.compiling = false;
 }
 
-void Jit::Comp_JumpReg(MIPSOpcode op)
+void ArmJit::Comp_JumpReg(MIPSOpcode op)
 {
 	if (js.inDelaySlot) {
-		ERROR_LOG_REPORT(JIT, "Branch in JumpReg delay slot at %08x in block starting at %08x", js.compilerPC, js.blockStart);
+		ERROR_LOG_REPORT(JIT, "Branch in JumpReg delay slot at %08x in block starting at %08x", GetCompilerPC(), js.blockStart);
 		return;
 	}
 	MIPSGPReg rs = _RS;
 	MIPSGPReg rd = _RD;
-	bool andLink = (op & 0x3f) == 9;
+	bool andLink = (op & 0x3f) == 9 && rd != MIPS_REG_ZERO;
 
-	MIPSOpcode delaySlotOp = Memory::Read_Instruction(js.compilerPC + 4);
+	MIPSOpcode delaySlotOp = GetOffsetInstruction(1);
 	bool delaySlotIsNice = IsDelaySlotNiceReg(op, delaySlotOp, rs);
 	if (andLink && rs == rd)
 		delaySlotIsNice = false;
@@ -520,12 +524,12 @@ void Jit::Comp_JumpReg(MIPSOpcode op)
 		gpr.MapReg(rs);
 		MovToPC(gpr.R(rs));  // For syscall to be able to return.
 		if (andLink)
-			gpr.SetImm(rd, js.compilerPC + 8);
+			gpr.SetImm(rd, GetCompilerPC() + 8);
 		CompileDelaySlot(DELAYSLOT_FLUSH);
 		return;  // Syscall wrote exit code.
 	} else if (delaySlotIsNice) {
 		if (andLink)
-			gpr.SetImm(rd, js.compilerPC + 8);
+			gpr.SetImm(rd, GetCompilerPC() + 8);
 		CompileDelaySlot(DELAYSLOT_NICE);
 
 		if (!andLink && rs == MIPS_REG_RA && g_Config.bDiscardRegsOnJRRA) {
@@ -557,7 +561,7 @@ void Jit::Comp_JumpReg(MIPSOpcode op)
 		gpr.MapReg(rs);
 		MOV(R8, gpr.R(rs));
 		if (andLink)
-			gpr.SetImm(rd, js.compilerPC + 8);
+			gpr.SetImm(rd, GetCompilerPC() + 8);
 		CompileDelaySlot(DELAYSLOT_NICE);
 		FlushAll();
 	}
@@ -578,18 +582,38 @@ void Jit::Comp_JumpReg(MIPSOpcode op)
 }
 
 	
-void Jit::Comp_Syscall(MIPSOpcode op)
+void ArmJit::Comp_Syscall(MIPSOpcode op)
 {
+	if (!g_Config.bSkipDeadbeefFilling)
+	{
+		// All of these will be overwritten with DEADBEEF anyway.
+		gpr.DiscardR(MIPS_REG_COMPILER_SCRATCH);
+		// We need to keep A0 - T3, which are used for args.
+		gpr.DiscardR(MIPS_REG_T4);
+		gpr.DiscardR(MIPS_REG_T5);
+		gpr.DiscardR(MIPS_REG_T6);
+		gpr.DiscardR(MIPS_REG_T7);
+		gpr.DiscardR(MIPS_REG_T8);
+		gpr.DiscardR(MIPS_REG_T9);
+
+		gpr.DiscardR(MIPS_REG_HI);
+		gpr.DiscardR(MIPS_REG_LO);
+	}
+
 	// If we're in a delay slot, this is off by one.
 	const int offset = js.inDelaySlot ? -1 : 0;
 	WriteDownCount(offset);
 	RestoreRoundingMode();
 	js.downcountAmount = -offset;
 
-	// TODO: Maybe discard v0, v1, and some temps?  Definitely at?
 	FlushAll();
 
 	SaveDowncount();
+#ifdef USE_PROFILER
+	// When profiling, we can't skip CallSyscall, since it times syscalls.
+	gpr.SetRegImm(R0, op.encoding);
+	QuickCallFunction(R1, (void *)&CallSyscall);
+#else
 	// Skip the CallSyscall where possible.
 	void *quickFunc = GetQuickSyscallFunc(op);
 	if (quickFunc)
@@ -603,6 +627,7 @@ void Jit::Comp_Syscall(MIPSOpcode op)
 		gpr.SetRegImm(R0, op.encoding);
 		QuickCallFunction(R1, (void *)&CallSyscall);
 	}
+#endif
 	ApplyRoundingMode();
 	RestoreDowncount();
 
@@ -610,7 +635,7 @@ void Jit::Comp_Syscall(MIPSOpcode op)
 	js.compiling = false;
 }
 
-void Jit::Comp_Break(MIPSOpcode op)
+void ArmJit::Comp_Break(MIPSOpcode op)
 {
 	Comp_Generic(op);
 	WriteSyscallExit();

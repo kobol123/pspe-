@@ -1,4 +1,4 @@
-// Copyright (c) 2014- PPSSPP Project.
+// Copyright (c) 2015- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,8 +12,7 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official git repository and contact information can be found at
-// https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
+
 
 #pragma once
 
@@ -40,7 +39,7 @@ public:
 	bool InitGraphics(std::string *error_message) override { return true; }
 	void ShutdownGraphics() override {}
 
-	void InitSound(PMixer *mixer) override;
+	void InitSound() override;
 	void UpdateSound() override {}
 	void ShutdownSound() override;
 
@@ -96,7 +95,7 @@ public:
 	virtual bool InitGraphics(std::string *error_message) override { return true; }
 	virtual void ShutdownGraphics() override {}
 
-	virtual void InitSound(PMixer *mixer) override;
+	virtual void InitSound() override;
 	virtual void UpdateSound() override {}
 	virtual void ShutdownSound();
 
@@ -122,7 +121,7 @@ public:
 	virtual void ResetSymbolMap() {}
 	virtual void AddSymbol(std::string name, u32 addr, u32 size, int type=0) {}
 	virtual void SetWindowTitle(const char *message) {
-		QString title = "PPSSPP " + QString(PPSSPP_GIT_VERSION) + " - " + QString::fromUtf8(message);
+		QString title = "PSP " + QString(PSP_GIT_VERSION) + " - " + QString::fromUtf8(message);
 
 		mainWindow->setWindowTitle(title);
 	}

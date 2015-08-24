@@ -1,4 +1,4 @@
-// Copyright (c) 2015- PSPe+ Project.
+// Copyright (c) 2013- PSPe+ Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,8 +12,7 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official git repository and contact information can be found at
-//
+
 
 #pragma once
 
@@ -22,7 +21,7 @@
 #include "Common/ChunkFile.h"
 
 struct BufferQueue {
-	BufferQueue(int size = 0x10000) { //a proper size
+	BufferQueue(int size = 0x10000) {
 		bufQueue = 0;
 		alloc(size);
 	}

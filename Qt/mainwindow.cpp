@@ -15,7 +15,7 @@
 #include "GPU/GPUInterface.h"
 #include "UI/GamepadEmu.h"
 
-MainWindow::MainWindow(QWidget *parent) :
+MainWindow::MainWindow(QWidget *parent, bool fullscreen) :
 	QMainWindow(parent),
 	currentLanguage("en"),
 	nextState(CORE_POWERDOWN),
@@ -25,10 +25,12 @@ MainWindow::MainWindow(QWidget *parent) :
 	memoryTexWindow(0),
 	displaylistWindow(0)
 {
-	// Allow creation on custom screen
+	QDesktopWidget *desktop = QApplication::desktop();
 	int screenNum = QProcessEnvironment::systemEnvironment().value("SDL_VIDEO_FULLSCREEN_HEAD", "0").toInt();
+	
 	// Move window to top left coordinate of selected screen
-	move(qApp->desktop()->screen(screenNum)->pos());
+	QRect rect = desktop->screenGeometry(screenNum);
+	move(rect.topLeft());
 
 	SetGameTitle("");
 	emugl = new MainUI(this);
@@ -38,6 +40,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	updateMenus();
 
 	SetZoom(g_Config.iInternalResolution);
+	
+	if(fullscreen)
+	  fullscrAct();
 
 	QObject::connect(emugl, SIGNAL(doubleClick()), this, SLOT(fullscrAct()));
 	QObject::connect(emugl, SIGNAL(newFrame()), this, SLOT(newFrame()));
@@ -334,6 +339,15 @@ void MainWindow::stretchAct()
 		gpu->Resized();
 }
 
+void MainWindow::raiseTopMost()
+{
+	
+	setWindowState( (windowState() & ~Qt::WindowMinimized) | Qt::WindowActive);
+	raise();  
+	activateWindow(); 
+	
+}
+
 void MainWindow::fullscrAct()
 {
 	if(isFullScreen()) {
@@ -364,21 +378,23 @@ void MainWindow::fullscrAct()
 			QApplication::setOverrideCursor(QCursor(Qt::BlankCursor));
 
 	}
+	
+	QTimer::singleShot(1000, this, SLOT(raiseTopMost()));
 }
 
 void MainWindow::websiteAct()
 {
-	QDesktopServices::openUrl(QUrl(""));
+	QDesktopServices::openUrl(QUrl("http://www.ppsspp.org/"));
 }
 
 void MainWindow::forumAct()
 {
-	QDesktopServices::openUrl(QUrl(""));
+	QDesktopServices::openUrl(QUrl("http://forums.ppsspp.org/"));
 }
 
 void MainWindow::aboutAct()
 {
-	QMessageBox::about(this, "About", QString::fromUtf8("PSPE Qt " PPSSPP_GIT_VERSION "\n\n"
+	QMessageBox::about(this, "About", QString::fromUtf8("PPSSPP Qt " PPSSPP_GIT_VERSION "\n\n"
 	                                                    "PSP emulator and debugger\n\n"
 	                                                    "Copyright (c) by Henrik Rydg\xc3\xa5rd and the PPSSPP Project 2012-\n"
 	                                                    "Qt port maintained by xSacha\n\n"
@@ -408,7 +424,7 @@ void MainWindow::SetZoom(int zoom) {
 
 void MainWindow::SetGameTitle(QString text)
 {
-	QString title = "PSPE " PSPE_GIT_VERSION;
+	QString title = "PPSSPP " PPSSPP_GIT_VERSION;
 	if (text != "")
 		title += QString(" - %1").arg(text);
 
@@ -423,7 +439,7 @@ void MainWindow::loadLanguage(const QString& language, bool translate)
 		QApplication::removeTranslator(&translator);
 
 		currentLanguage = language;
-		if (translator.load(QString(":/languages/pspe+_%1.qm").arg(language))) {
+		if (translator.load(QString(":/languages/ppsspp_%1.qm").arg(language))) {
 			QApplication::installTranslator(&translator);
 		}
 		if (translate)
@@ -604,7 +620,7 @@ void MainWindow::createMenus()
 	MenuTree* helpMenu = new MenuTree(this, menuBar(),    QT_TR_NOOP("&Help"));
 	helpMenu->add(new MenuAction(this, SLOT(websiteAct()),    QT_TR_NOOP("Official &website"), QKeySequence::HelpContents));
 	helpMenu->add(new MenuAction(this, SLOT(forumAct()),      QT_TR_NOOP("Official &forum")));
-	helpMenu->add(new MenuAction(this, SLOT(aboutAct()),      QT_TR_NOOP("&About PSPE..."), QKeySequence::WhatsThis));
+	helpMenu->add(new MenuAction(this, SLOT(aboutAct()),      QT_TR_NOOP("&About PPSSPP..."), QKeySequence::WhatsThis));
 
 	retranslate();
 }

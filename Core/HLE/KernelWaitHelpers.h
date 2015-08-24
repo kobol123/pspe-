@@ -12,8 +12,7 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official git repository and contact information can be found at
-// 
+
 
 #pragma once
 
@@ -21,7 +20,7 @@
 #include <map>
 #include <algorithm>
 #include "Core/HLE/sceKernelThread.h"
-
+#include "Core/Config.h"
 namespace HLEKernel
 {
 
@@ -250,10 +249,16 @@ WaitBeginEndCallbackResult WaitEndCallback(SceUID threadID, SceUID prevCallbackI
 		return WAIT_CB_SUCCESS;
 	}
 
-	
+	WaitInfoType waitData;
 	auto result = WaitEndCallback<KO, waitType>(threadID, prevCallbackId, waitTimer, TryUnlock, waitData, ko->waitingThreads, ko->pausedWaits);
-	
-	return result;
+	if (&g_Config.bKernelWH) {
+	        if (result == WAIT_CB_RESUMED_WAIT) {
+			 //TODO: Should this not go at the end?
+			ko->waitingThreads.push_back(waitData);
+	        }    }
+
+
+		return result;
 }
 
 // Verify that a thread has not been released from waiting, e.g. by sceKernelReleaseWaitThread().
