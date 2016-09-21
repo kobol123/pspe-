@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="hello">Hello World, PSPe+Activity!</string>
+    <string name="app_name">PSPe+</string>
+    <string name="shortcut_name">PSPe+ game</string>
+
+</resources>
