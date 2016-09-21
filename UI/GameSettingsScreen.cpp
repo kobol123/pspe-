@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 // Copyright (c) 2015- PSPe+ Project.
+=======
+﻿// Copyright (c) 2015- PSPe+ Project.
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -133,19 +137,31 @@ void GameSettingsScreen::CreateViews() {
 
 
 	graphicsSettings->Add(new ItemHeader(gr->T("Frame Rate Control")));
+<<<<<<< HEAD
 	static const char *frameSkip[] = {"Off", "1", "2", "3", "4", "5", "6", "7", "8" ,"9", "10", "11" , "12", "13", "14","15","16"};
+=======
+	static const char *frameSkip[] = {"Off", "1", "2", "3", "4", "5", "6", "7", "8" ,"9", "10", "11" , "12"};
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 	graphicsSettings->Add(new PopupMultiChoice(&g_Config.iFrameSkip, gr->T("Frame Skipping"), frameSkip, 0, ARRAY_SIZE(frameSkip), gr, screenManager()));
 	frameSkipAuto_ = graphicsSettings->Add(new CheckBox(&g_Config.bAutoFrameSkip, gr->T("Auto FrameSkip")));
 	frameSkipAuto_->OnClick.Handle(this, &GameSettingsScreen::OnAutoFrameskip);
 	graphicsSettings->Add(new CheckBox(&cap60FPS_, gr->T("Force max 60 FPS")));
 
+<<<<<<< HEAD
 	graphicsSettings->Add(new PopupSliderChoice(&iAlternateSpeedPercent_, 0, 4000, gr->T("Alternative Speed", "Alternative Speed (in %, 0 = unlimited)"), 5, screenManager()));
+=======
+	graphicsSettings->Add(new PopupSliderChoice(&iAlternateSpeedPercent_, 0, 600, gr->T("Alternative Speed", "Alternative Speed (in %, 0 = unlimited)"), 5, screenManager()));
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 
 	graphicsSettings->Add(new ItemHeader(gr->T("Features")));
 	I18NCategory *ps = GetI18NCategory("PostShaders");
 	postProcChoice_ = graphicsSettings->Add(new ChoiceWithValueDisplay(&g_Config.sPostShaderName, gr->T("Postprocessing Shader"), ps));
 	postProcChoice_->OnClick.Handle(this, &GameSettingsScreen::OnPostProcShader);
+<<<<<<< HEAD
 	postProcEnable_ = true;
+=======
+	postProcEnable_ = !g_Config.bSoftwareRendering && (g_Config.iRenderingMode != FB_NON_BUFFERED_MODE);
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 	postProcChoice_->SetEnabledPtr(&postProcEnable_);
 
 #if !defined(MOBILE_DEVICE)
@@ -285,11 +301,17 @@ void GameSettingsScreen::CreateViews() {
 	CheckBox *prescale = graphicsSettings->Add(new CheckBox(&g_Config.bPrescaleUV, gr->T("Texture Speedhack")));
 	prescale->SetDisabledPtr(&g_Config.bSoftwareRendering);
 
+<<<<<<< HEAD
 CheckBox *RefreshDrawingHack = graphicsSettings->Add(new CheckBox(&g_Config.bRefreshDrawingHackb, gr->T("Disable Refresh Drawing - Speed in Games eg. COD but break Intro Scenes")));;
+=======
+
+
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 
 	CheckBox *blockHack = graphicsSettings->Add(new CheckBox(&g_Config.bBlockHack, gr->T("BlockHack - Speed in Games eg. Gow")));;
 		CheckBox *threadHack = graphicsSettings->Add(new CheckBox(&g_Config.bThreadHackb, gr->T("ThreadHack - Speed in Games eg. Burnout but break sound")));;
 
+<<<<<<< HEAD
     
     graphicsSettings->Add(new ItemHeader(gr->T("Mali Driver Settings Experimental", "Mali Driver Settings Experimental")));
 
@@ -310,6 +332,11 @@ CheckBox *MaliHack = graphicsSettings->Add(new CheckBox(&g_Config.bMaliHackb, gr
     
     
     
+=======
+
+
+
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 	static const char *bloomHackOptions[] = { "Off", "Safe", "Balanced", "Aggressive" };
 
 	bloomHackEnable_ = !g_Config.bSoftwareRendering && (g_Config.iInternalResolution != 1);
@@ -394,7 +421,10 @@ CheckBox *MaliHack = graphicsSettings->Add(new CheckBox(&g_Config.bMaliHackb, gr
 	if (System_GetPropertyInt(SYSPROP_DEVICE_TYPE) != DEVICE_TYPE_TV) {
 		controlsSettings->Add(new ItemHeader(co->T("OnScreen", "On-Screen Touch Controls")));
 		controlsSettings->Add(new CheckBox(&g_Config.bShowTouchControls, co->T("OnScreen", "On-Screen Touch Controls")));
+<<<<<<< HEAD
 		controlsSettings->Add(new CheckBox(&g_Config.CustomLR, co->T("CustomLR", "Custom L/R Buttons")));
+=======
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 		layoutEditorChoice_ = controlsSettings->Add(new Choice(co->T("Custom layout...")));
 		layoutEditorChoice_->OnClick.Handle(this, &GameSettingsScreen::OnTouchControlLayout);
 		layoutEditorChoice_->SetEnabledPtr(&g_Config.bShowTouchControls);
@@ -447,6 +477,7 @@ CheckBox *MaliHack = graphicsSettings->Add(new CheckBox(&g_Config.bMaliHackb, gr
 #endif // #if defined(USING_WIN_UI)
 	controlsSettings->Add(new PopupSliderChoiceFloat(&g_Config.fAnalogLimiterDeadzone, 0.0f, 1.0f, co->T("Analog Limiter"), 0.10f, screenManager()));
 
+<<<<<<< HEAD
 	ViewGroup *networkingSettingsScroll = new ScrollView(ORIENT_VERTICAL, new LinearLayoutParams(FILL_PARENT, FILL_PARENT));
 	LinearLayout *networkingSettings = new LinearLayout(ORIENT_VERTICAL);
 	networkingSettings->SetSpacing(0);
@@ -458,16 +489,37 @@ CheckBox *MaliHack = graphicsSettings->Add(new CheckBox(&g_Config.bMaliHackb, gr
 
 
 	networkingSettings->Add(new CheckBox(&g_Config.bEnableWlan, n->T("Enable networking", "Enable networking")));
+=======
+	//ViewGroup *networkingSettingsScroll = new ScrollView(ORIENT_VERTICAL, new LinearLayoutParams(FILL_PARENT, FILL_PARENT));
+	//LinearLayout *networkingSettings = new LinearLayout(ORIENT_VERTICAL);
+	//networkingSettings->SetSpacing(0);
+	//networkingSettingsScroll->Add(networkingSettings);
+	//tabHolder->AddTab(ms->T("Networking"), networkingSettingsScroll);
+
+	//networkingSettings->Add(new ItemHeader(ms->T("Networking")));
+
+
+
+	//networkingSettings->Add(new CheckBox(&g_Config.bEnableWlan, n->T("Enable networking", "Enable networking")));
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 
 #ifdef _WIN32
 	networkingSettings->Add(new PopupTextInputChoice(&g_Config.proAdhocServer, n->T("Change proAdhocServer Address"), "", 255, screenManager()));
 #else
+<<<<<<< HEAD
 networkingSettings->Add(new ChoiceWithValueDisplay(&g_Config.proAdhocServer, n->T("Change proAdhocServer Address"), nullptr))->OnClick.Handle(this, &GameSettingsScreen::OnChangeproAdhocServerAddress);
 #endif
 networkingSettings->Add(new CheckBox(&g_Config.bEnableAdhocServer, n->T("Enable built-in PRO Adhoc Server", "Enable built-in PRO Adhoc Server")));
 	networkingSettings->Add(new ChoiceWithValueDisplay(&g_Config.sMACAddress, n->T("Change Mac Address"), nullptr))->OnClick.Handle(this, &GameSettingsScreen::OnChangeMacAddress);
 
 	
+=======
+
+#endif
+
+	//networkingSettings->Add(new ChoiceWithValueDisplay(&g_Config.sMACAddress, n->T("Change Mac Address"), nullptr))->OnClick.Handle(this, &GameSettingsScreen::OnChangeMacAddress);
+
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 
 	// System
 	ViewGroup *systemSettingsScroll = new ScrollView(ORIENT_VERTICAL, new LinearLayoutParams(FILL_PARENT, FILL_PARENT));
@@ -510,8 +562,20 @@ networkingSettings->Add(new CheckBox(&g_Config.bEnableAdhocServer, n->T("Enable 
 	systemSettings->Add(new Choice(sy->T("Restore Default Settings")))->OnClick.Handle(this, &GameSettingsScreen::OnRestoreDefaultSettings);
 	systemSettings->Add(new CheckBox(&g_Config.bEnableAutoLoad, sy->T("Auto Load Newest Savestate")));
 
+<<<<<<< HEAD
    
 	
+=======
+
+	systemSettings->Add(new ItemHeader(sy->T("Networking")));
+	systemSettings->Add(new CheckBox(&g_Config.bEnableWlan, sy->T("Enable networking", "Enable networking")));
+
+
+
+	systemSettings->Add(new ChoiceWithValueDisplay(&g_Config.sMACAddress, sy->T("Change Mac Address"), nullptr))->OnClick.Handle(this, &GameSettingsScreen::OnChangeMacAddress);
+
+
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 
 
 

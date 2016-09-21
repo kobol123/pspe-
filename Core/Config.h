@@ -191,6 +191,7 @@ public:
 	bool bKernelWH;
 	bool bThreadHackb;
 	bool bBlockHack;
+<<<<<<< HEAD
     bool bRefreshDrawingHackb;
     bool bMaliHackb;
     int iMaliHackCompressb;
@@ -198,6 +199,9 @@ public:
     int iMaliHackBufferb;
     
     bool bAlphaMaskHack;
+=======
+	bool bAlphaMaskHack;
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 	bool bBlockTransferGPU;
 	bool bDisableSlowFramebufEffects;
 	bool bFragmentTestCache;
@@ -300,8 +304,11 @@ public:
 	bool bShowTouchAnalogStick;
 	bool bShowTouchDpad;
 
+<<<<<<< HEAD
 	bool CustomLR;
 
+=======
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 #if !defined(__SYMBIAN32__) && !defined(IOS) && !defined(MAEMO)
 	bool bShowTouchPause;
 #endif

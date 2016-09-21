@@ -2,8 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.mostudios.pspe"
     android:installLocation="auto"
+<<<<<<< HEAD
     android:versionCode="81"
     android:versionName="2.2.8" >
+=======
+    android:versionCode="27"
+    android:versionName="1.0.1" >
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 
     <uses-sdk
         android:minSdkVersion="9"

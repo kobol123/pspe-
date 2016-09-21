@@ -493,11 +493,16 @@ void CreditsScreen::render() {
 		cr->T("contributors", "Contributors:"),
 
 		"kobol",
+<<<<<<< HEAD
 		"zakzor",
+=======
+		"",
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 		"",
 		cr->T("specialthanks", "Special thanks to:"),
         "hrydgard",
 		"Xana",
+<<<<<<< HEAD
 		"zakzor",
 		"Danilo CR",
 		//cr->T("this translation by", ""),   // Empty string as this is the original :)
@@ -507,6 +512,15 @@ void CreditsScreen::render() {
 		//cr->T("translators4", ""),
 		//cr->T("translators5", ""),
 		//cr->T("translators6", ""),
+=======
+		cr->T("this translation by", ""),   // Empty string as this is the original :)
+		cr->T("translators1", ""),
+		cr->T("translators2", ""),
+		cr->T("translators3", ""),
+		cr->T("translators4", ""),
+		cr->T("translators5", ""),
+		cr->T("translators6", ""),
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 		"",
 		cr->T("written", "Written in C++ for speed and portability"),
 		"",
@@ -526,11 +540,19 @@ void CreditsScreen::render() {
 		"freetype2",
 		"zlib",
 		"PSP SDK",
+<<<<<<< HEAD
 		"libnative",
 		"",
 		//cr->T("website", ""),
 		"",
 		//cr->T("list", ""),
+=======
+		"",
+		"",
+		cr->T("website", ""),
+		"",
+		cr->T("list", ""),
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 		"",
 		"",
 		"",

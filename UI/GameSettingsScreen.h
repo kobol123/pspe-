@@ -112,7 +112,10 @@ private:
 	bool resolutionEnable_;
 	bool bloomHackEnable_;
 	bool displayRotEnable_;
+<<<<<<< HEAD
     bool MaliHack_;
+=======
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 };
 
 class DeveloperToolsScreen : public UIDialogScreenWithBackground {

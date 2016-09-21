@@ -1,0 +1,53 @@
+# https://travis-ci.org
+
+language: cpp
+
+os: linux
+
+dist: trusty
+
+compiler:
+  - gcc
+
+env:
+  - PPSSPP_BUILD_TYPE=Linux
+    CMAKE=TRUE
+  - PPSSPP_BUILD_TYPE=Android
+  - PPSSPP_BUILD_TYPE=Blackberry
+    CMAKE=TRUE
+  - PPSSPP_BUILD_TYPE=Symbian
+
+notifications:
+  irc:
+    channels: "chat.freenode.net#ppsspp"
+    on_success: change
+    on_failure: always
+    skip_join: true
+    template:
+      - "%{repository_slug}:%{branch} - %{message} %{build_url}"
+
+matrix:
+  include:
+    - compiler: clang
+      env: PPSSPP_BUILD_TYPE=Linux
+           CMAKE=TRUE
+    - compiler: gcc
+      env: PPSSPP_BUILD_TYPE=Linux
+           QT=TRUE
+# Can't get iOS to work.
+#    - os: osx
+#      compiler: clang
+#      env: PPSSPP_BUILD_TYPE=iOS
+#           CMAKE=TRUE
+
+before_install:
+  - bash .travis.sh travis_before_install
+
+install:
+  - bash .travis.sh travis_install
+
+script:
+  - bash .travis.sh travis_script
+
+after_success:
+  - bash .travis.sh travis_after_success

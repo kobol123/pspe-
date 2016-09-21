@@ -472,12 +472,18 @@ static ConfigSetting graphicsSettings[] = {
 	ReportedConfigSetting("PostShader", &g_Config.sPostShaderName, "Off"),
 	ReportedConfigSetting("ThreadHack Burnout", &g_Config.bThreadHackb, false),
 	ReportedConfigSetting("BlockHack Gow", &g_Config.bBlockHack, false),
+<<<<<<< HEAD
     ReportedConfigSetting("RefresDrawingHack", &g_Config.bRefreshDrawingHackb, false),
 	ReportedConfigSetting("DisableSlowFramebufEffects", &g_Config.bDisableSlowFramebufEffects, false),
     ReportedConfigSetting("MaliDriverHack", &g_Config.bMaliHackb, false),
     ReportedConfigSetting("MaliCompress", &g_Config.iMaliHackCompressb, 0),
     ReportedConfigSetting("MaliPixelClock", &g_Config.iMaliHackPixelb, 0),
     ReportedConfigSetting("MaliBuffer", &g_Config.iMaliHackBufferb, 0),
+=======
+
+	ReportedConfigSetting("DisableSlowFramebufEffects", &g_Config.bDisableSlowFramebufEffects, false),
+
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 
 	ConfigSetting(false), 
 };
@@ -544,10 +550,13 @@ static ConfigSetting controlSettings[] = {
 	ConfigSetting("ShowTouchControls", &g_Config.bShowTouchControls, &DefaultShowTouchControls),
 
 
+<<<<<<< HEAD
 	ConfigSetting("Custom L And R", &g_Config.CustomLR, false),
 
 
 
+=======
+>>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 #ifdef MOBILE_DEVICE
 	ConfigSetting("TiltBaseX", &g_Config.fTiltBaseX, 0.0f),
 	ConfigSetting("TiltBaseY", &g_Config.fTiltBaseY, 0.0f),
