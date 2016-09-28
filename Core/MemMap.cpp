@@ -376,7 +376,7 @@ void Shutdown()
 	u32 flags = 0;
 
 	MemoryMap_Shutdown(flags);
-	base = NULL;
+	base = nullptr;
 	DEBUG_LOG(MEMMAP, "Memory system shut down.");
 }
 
@@ -389,7 +389,10 @@ void Clear()
 	if (m_pVRAM)
 		memset(m_pVRAM, 0, VRAM_SIZE);
 }
-
+    bool IsActive() {
+        	return base != nullptr;
+        }
+    
 // Wanting to avoid include pollution, MemMap.h is included a lot.
 MemoryInitedLock::MemoryInitedLock()
 {

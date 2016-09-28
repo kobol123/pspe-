@@ -13,11 +13,7 @@
 // If not, see http://www.gnu.org/licenses/
 
 // Official git repository and contact information can be found at
-<<<<<<< HEAD
 
-=======
-// 
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 
 #include <algorithm>
 #include "Common/Common.h"
@@ -29,7 +25,6 @@
 #include "GPU/Common/FramebufferCommon.h"
 #include "GPU/GPUInterface.h"
 #include "GPU/GPUState.h"
-<<<<<<< HEAD
 #include "GPU/Common/gralloc/framebuffer_device.h"
 #include "GPU/Common/gralloc/gralloc_module.cpp"
 
@@ -162,8 +157,6 @@ void CenterRect(float *x, float *y, float *w, float *h, float origW, float origH
     
 }
 
-=======
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 
 FramebufferManagerCommon::FramebufferManagerCommon() :
 	displayFramebufPtr_(0),
@@ -182,12 +175,7 @@ FramebufferManagerCommon::~FramebufferManagerCommon() {
 }
 
 void FramebufferManagerCommon::Init() {
-<<<<<<< HEAD
        const std::string gameId = g_paramSFO.GetValueString("DISC_ID");
-=======
-
-	const std::string gameId = g_paramSFO.GetValueString("DISC_ID");
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 	// This applies a hack to Dangan Ronpa, its demo, and its sequel.
 	// The game draws solid colors to a small framebuffer, and then reads this directly in VRAM.
 	// We force this framebuffer to 1x and force download it automatically.
@@ -196,7 +184,6 @@ void FramebufferManagerCommon::Init() {
 	// And an initial clear. We don't clear per frame as the games are supposed to handle that
 	// by themselves.
 	ClearBuffer();
-<<<<<<< HEAD
     /*
      * HAL_MODULE_INFO_SYM will be initialized using the default constructor
      * implemented above
@@ -236,10 +223,6 @@ void FramebufferManagerCommon::Init() {
     
 	BeginFrame();
     
-=======
-
-	BeginFrame();
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 }
 
 void FramebufferManagerCommon::BeginFrame() {
@@ -270,10 +253,6 @@ VirtualFramebuffer *FramebufferManagerCommon::GetVFBAt(u32 addr) {
 		return match;
 	}
 
-<<<<<<< HEAD
-=======
-	DEBUG_LOG(SCEGE, "Finding no FBO matching address %08x", addr);
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 	return 0;
 }
 
@@ -290,20 +269,8 @@ bool FramebufferManagerCommon::ShouldDownloadFramebuffer(const VirtualFramebuffe
 }
 
 // Heuristics to figure out the size of FBO to create.
-<<<<<<< HEAD
 void FramebufferManagerCommon::EstimateDrawingSize(u32 fb_address, GEBufferFormat fb_format, int viewport_width, int viewport_height, int region_width, int region_height, int scissor_width, int scissor_height, int fb_stride, int &drawing_width, int &drawing_height) {
 	static const int MAX_FRAMEBUF_HEIGHT = 512;
-=======
-void FramebufferManagerCommon::EstimateDrawingSize(int &drawing_width, int &drawing_height) {
-	static const int MAX_FRAMEBUF_HEIGHT = 512;
-	const int viewport_width = (int) gstate.getViewportX1();
-	const int viewport_height = (int) gstate.getViewportY1();
-	const int region_width = gstate.getRegionX2() + 1;
-	const int region_height = gstate.getRegionY2() + 1;
-	const int scissor_width = gstate.getScissorX2() + 1;
-	const int scissor_height = gstate.getScissorY2() + 1;
-	const int fb_stride = std::max(gstate.FrameBufStride(), 4);
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 
 	// Games don't always set any of these.  Take the greatest parameter that looks valid based on stride.
 	if (viewport_width > 4 && viewport_width <= fb_stride) {
@@ -315,13 +282,9 @@ void FramebufferManagerCommon::EstimateDrawingSize(int &drawing_width, int &draw
 			drawing_height = 272;
 		}
 		// Sometimes region is set larger than the VRAM for the framebuffer.
-<<<<<<< HEAD
 		// However, in one game it's correctly set as a larger height (see #7277) with the same width.
 		// A bit of a hack, but we try to handle that unusual case here.
 		if (region_width <= fb_stride && (region_width > drawing_width || (region_width == drawing_width && region_height > drawing_height)) && region_height <= MAX_FRAMEBUF_HEIGHT) {
-=======
-		if (region_width <= fb_stride && region_width > drawing_width && region_height <= MAX_FRAMEBUF_HEIGHT) {
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 			drawing_width = region_width;
 			drawing_height = std::max(drawing_height, region_height);
 		}
@@ -347,10 +310,6 @@ void FramebufferManagerCommon::EstimateDrawingSize(int &drawing_width, int &draw
 
 	if (viewport_width != region_width) {
 		// The majority of the time, these are equal.  If not, let's check what we know.
-<<<<<<< HEAD
-=======
-		const u32 fb_address = gstate.getFrameBufAddress();
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 		u32 nearest_address = 0xFFFFFFFF;
 		for (size_t i = 0; i < vfbs_.size(); ++i) {
 			const u32 other_address = vfbs_[i]->fb_address | 0x44000000;
@@ -362,11 +321,7 @@ void FramebufferManagerCommon::EstimateDrawingSize(int &drawing_width, int &draw
 		// Unless the game is using overlapping buffers, the next buffer should be far enough away.
 		// This catches some cases where we can know this.
 		// Hmm.  The problem is that we could only catch it for the first of two buffers...
-<<<<<<< HEAD
 		const u32 bpp = fb_format == GE_FORMAT_8888 ? 4 : 2;
-=======
-		const u32 bpp = gstate.FrameBufFormat() == GE_FORMAT_8888 ? 4 : 2;
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 		int avail_height = (nearest_address - fb_address) / (fb_stride * bpp);
 		if (avail_height < drawing_height && avail_height == region_height) {
 			drawing_width = std::min(region_width, fb_stride);
@@ -379,7 +334,6 @@ void FramebufferManagerCommon::EstimateDrawingSize(int &drawing_width, int &draw
 		}
 	}
 
-<<<<<<< HEAD
 	DEBUG_LOG(G3D, "Est: %08x V: %ix%i, R: %ix%i, S: %ix%i, STR: %i, THR:%i, Z:%08x = %ix%i", fb_address, viewport_width,viewport_height, region_width, region_height, scissor_width, scissor_height, fb_stride, gstate.isModeThrough(), gstate.isDepthWriteEnabled() ? gstate.getDepthBufAddress() : 0, drawing_width, drawing_height);
 }
 
@@ -418,67 +372,19 @@ VirtualFramebuffer *FramebufferManagerCommon::DoSetRenderFrameBuffer(const Frame
 
 	// Collect all parameters. This whole function has really become a cesspool of heuristics...
 	// but it appears that's what it takes, unless we emulate VRAM layout more accurately somehow.
-=======
-	DEBUG_LOG(G3D, "Est: %08x V: %ix%i, R: %ix%i, S: %ix%i, STR: %i, THR:%i, Z:%08x = %ix%i", gstate.getFrameBufAddress(), viewport_width,viewport_height, region_width, region_height, scissor_width, scissor_height, fb_stride, gstate.isModeThrough(), gstate.isDepthWriteEnabled() ? gstate.getDepthBufAddress() : 0, drawing_width, drawing_height);
-}
-
-void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
-	/*
-	if (useBufferedRendering_ && currentRenderVfb_) {
-		// Hack is enabled, and there was a previous framebuffer.
-		// Before we switch, let's do a series of trickery to copy one bit of stencil to
-		// destination alpha. Or actually, this is just a bunch of hackery attempts on Wipeout.
-		// Ignore for now.
-		glstate.depthTest.disable();
-		glstate.colorMask.set(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
-		glstate.stencilTest.enable();
-		glstate.stencilOp.set(GL_KEEP, GL_KEEP, GL_KEEP);  // don't modify stencil§
-		glstate.stencilFunc.set(GL_GEQUAL, 0xFE, 0xFF);
-		DrawPlainColor(0x00000000);
-		//glstate.stencilFunc.set(GL_LESS, 0x80, 0xFF);
-		//DrawPlainColor(0xFF000000);
-		glstate.stencilTest.disable();
-		glstate.colorMask.set(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-		glstate.depthTest.disable();
-		glstate.colorMask.set(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
-		DrawPlainColor(0x00000000);
-		shaderManager_->DirtyLastShader();  // dirty lastShader_
-	}
-	*/
-
-
-	gstate_c.framebufChanged = false;
-
-	// Get parameters
-	const u32 fb_address = gstate.getFrameBufRawAddress();
-	const int fb_stride = gstate.FrameBufStride();
-
-	const u32 z_address = gstate.getDepthBufRawAddress();
-	const int z_stride = gstate.DepthBufStride();
-
-	GEBufferFormat fmt = gstate.FrameBufFormat();
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 
 	// As there are no clear "framebuffer width" and "framebuffer height" registers,
 	// we need to infer the size of the current framebuffer somehow.
 	int drawing_width, drawing_height;
-<<<<<<< HEAD
 	EstimateDrawingSize(params.fb_address, params.fmt, params.viewportWidth, params.viewportHeight, params.regionWidth, params.regionHeight, params.scissorWidth, params.scissorHeight, std::max(params.fb_stride, 4), drawing_width, drawing_height);
 
 	gstate_c.curRTOffsetX = 0;
-=======
-	EstimateDrawingSize(drawing_width, drawing_height);
-
-	gstate_c.cutRTOffsetX = 0;
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 	bool vfbFormatChanged = false;
 
 	// Find a matching framebuffer
 	VirtualFramebuffer *vfb = 0;
 	for (size_t i = 0; i < vfbs_.size(); ++i) {
 		VirtualFramebuffer *v = vfbs_[i];
-<<<<<<< HEAD
 		if (v->fb_address == params.fb_address) {
 			vfb = v;
 			// Update fb stride in case it changed
@@ -489,18 +395,6 @@ void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
 			}
 			// Heuristic: In throughmode, a higher height could be used.  Let's avoid shrinking the buffer.
 			if (params.isModeThrough && (int)vfb->width < params.fb_stride) {
-=======
-		if (v->fb_address == fb_address) {
-			vfb = v;
-			// Update fb stride in case it changed
-			if (vfb->fb_stride != fb_stride || vfb->format != fmt) {
-				vfbFormatChanged = true;
-				vfb->fb_stride = fb_stride;
-				vfb->format = fmt;
-			}
-			// In throughmode, a higher height could be used.  Let's avoid shrinking the buffer.
-			if (gstate.isModeThrough() && (int)vfb->width < fb_stride) {
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 				vfb->width = std::max((int)vfb->width, drawing_width);
 				vfb->height = std::max((int)vfb->height, drawing_height);
 			} else {
@@ -508,7 +402,6 @@ void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
 				vfb->height = drawing_height;
 			}
 			break;
-<<<<<<< HEAD
 		} else if (v->fb_address < params.fb_address && v->fb_address + v->fb_stride * 4 > params.fb_address) {
 			// Possibly a render-to-offset.
 			const u32 bpp = v->format == GE_FORMAT_8888 ? 4 : 2;
@@ -517,16 +410,6 @@ void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
 				WARN_LOG_REPORT_ONCE(renderoffset, HLE, "Rendering to framebuffer offset: %08x +%dx%d", v->fb_address, x_offset, 0);
 				vfb = v;
 				gstate_c.curRTOffsetX = x_offset;
-=======
-		} else if (v->fb_address < fb_address && v->fb_address + v->fb_stride * 4 > fb_address) {
-			// Possibly a render-to-offset.
-			const u32 bpp = v->format == GE_FORMAT_8888 ? 4 : 2;
-			const int x_offset = (fb_address - v->fb_address) / bpp;
-			if (v->format == fmt && v->fb_stride == fb_stride && x_offset < fb_stride && v->height >= drawing_height) {
-				WARN_LOG_REPORT_ONCE(renderoffset, HLE, "Rendering to framebuffer offset: %08x +%dx%d", v->fb_address, x_offset, 0);
-				vfb = v;
-				gstate_c.cutRTOffsetX = x_offset;
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 				vfb->width = std::max((int)vfb->width, x_offset + drawing_width);
 				// To prevent the newSize code from being confused.
 				drawing_width += x_offset;
@@ -548,14 +431,13 @@ void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
 			} else if (vfb->lastFrameNewSize + FBO_OLD_AGE < gpuStats.numFlips) {
 				// Okay, it's changed for a while (and stayed that way.)  Let's start over.
 				// But only if we really need to, to avoid blinking.
-<<<<<<< HEAD
 				bool needsRecreate = vfb->bufferWidth > params.fb_stride;
-=======
-				bool needsRecreate = vfb->bufferWidth > fb_stride;
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 				needsRecreate = needsRecreate || vfb->newWidth > vfb->bufferWidth || vfb->newWidth * 2 < vfb->bufferWidth;
 				needsRecreate = needsRecreate || vfb->newHeight > vfb->bufferHeight || vfb->newHeight * 2 < vfb->bufferHeight;
-				if (needsRecreate) {
+				if (needsRecreate)
+                {
+                    vfb->safeWidth = 0;
+                    vfb->safeHeight = 0;
 					ResizeFramebufFBO(vfb, vfb->width, vfb->height, true);
 				}
 			}
@@ -568,11 +450,7 @@ void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
 	float renderWidthFactor = (float)PSP_CoreParameter().renderWidth / 480.0f;
 	float renderHeightFactor = (float)PSP_CoreParameter().renderHeight / 272.0f;
 
-<<<<<<< HEAD
 	if (hackForce04154000Download_ && params.fb_address == 0x00154000) {
-=======
-	if (hackForce04154000Download_ && fb_address == 0x00154000) {
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 		renderWidthFactor = 1.0;
 		renderHeightFactor = 1.0;
 	}
@@ -580,18 +458,13 @@ void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
 	// None found? Create one.
 	if (!vfb) {
 		vfb = new VirtualFramebuffer();
-		vfb->fbo = 0;
-<<<<<<< HEAD
+		//vfb->fbo = 0;
+        memset(vfb, 0, sizeof(VirtualFramebuffer));
+        vfb->fbo = nullptr;
 		vfb->fb_address = params.fb_address;
 		vfb->fb_stride = params.fb_stride;
 		vfb->z_address = params.z_address;
 		vfb->z_stride = params.z_stride;
-=======
-		vfb->fb_address = fb_address;
-		vfb->fb_stride = fb_stride;
-		vfb->z_address = z_address;
-		vfb->z_stride = z_stride;
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 		vfb->width = drawing_width;
 		vfb->height = drawing_height;
 		vfb->newWidth = drawing_width;
@@ -601,10 +474,9 @@ void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
 		vfb->renderHeight = (u16)(drawing_height * renderHeightFactor);
 		vfb->bufferWidth = drawing_width;
 		vfb->bufferHeight = drawing_height;
-<<<<<<< HEAD
 		vfb->format = params.fmt;
-		vfb->drawnWidth = 0;
-		vfb->drawnHeight = 0;
+		//vfb->drawnWidth = 0;
+		//vfb->drawnHeight = 0;
 		vfb->drawnFormat = params.fmt;
 		vfb->usageFlags = FB_USAGE_RENDERTARGET;
 		SetColorUpdated(vfb, skipDrawReason);
@@ -612,18 +484,6 @@ void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
 
 		u32 byteSize = FramebufferByteSize(vfb);
 		u32 fb_address_mem = (params.fb_address & 0x3FFFFFFF) | 0x04000000;
-=======
-		vfb->format = fmt;
-		vfb->drawnWidth = 0;
-		vfb->drawnHeight = 0;
-		vfb->drawnFormat = fmt;
-		vfb->usageFlags = FB_USAGE_RENDERTARGET;
-		SetColorUpdated(vfb);
-		vfb->depthUpdated = false;
-
-		u32 byteSize = FramebufferByteSize(vfb);
-		u32 fb_address_mem = (fb_address & 0x3FFFFFFF) | 0x04000000;
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 		if (Memory::IsVRAMAddress(fb_address_mem) && fb_address_mem + byteSize > framebufRangeEnd_) {
 			framebufRangeEnd_ = fb_address_mem + byteSize;
 		}
@@ -634,12 +494,9 @@ void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
 		INFO_LOG(SCEGE, "Creating FBO for %08x : %i x %i x %i", vfb->fb_address, vfb->width, vfb->height, vfb->format);
 
 		vfb->last_frame_render = gpuStats.numFlips;
-		vfb->last_frame_used = 0;
-		vfb->last_frame_attached = 0;
-<<<<<<< HEAD
-		vfb->last_frame_displayed = 0;
-=======
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
+		//vfb->last_frame_used = 0;
+		//vfb->last_frame_attached = 0;
+		//vfb->last_frame_displayed = 0;
 		frameLastFramebufUsed_ = gpuStats.numFlips;
 		vfbs_.push_back(vfb);
 		currentRenderVfb_ = vfb;
@@ -652,7 +509,6 @@ void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
 
 		// Let's check for depth buffer overlap.  Might be interesting.
 		bool sharingReported = false;
-<<<<<<< HEAD
 		for (size_t i = 0, end = vfbs_.size(); i < end; ++i) {
 			if (vfbs_[i]->z_stride != 0 && params.fb_address == vfbs_[i]->z_address) {
 				// If it's clearing it, most likely it just needs more video memory.
@@ -672,34 +528,6 @@ void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
 				// It's possible the other might not clear, but when every game is reported it's not useful.
 				if (params.isWritingDepth) {
 					WARN_LOG_REPORT(SCEGE, "FBO reusing depthbuffer, %08x/%08x and %08x/%08x", params.fb_address, params.z_address, vfbs_[i]->fb_address, vfbs_[i]->z_address);
-=======
-		bool writingDepth = true;
-		// Technically, it may write depth later, but we're trying to detect it only when it's really true.
-		if (gstate.isModeClear()) {
-			writingDepth = !gstate.isClearModeDepthMask() && gstate.isDepthWriteEnabled();
-		} else {
-			writingDepth = gstate.isDepthWriteEnabled();
-		}
-		for (size_t i = 0, end = vfbs_.size(); i < end; ++i) {
-			if (vfbs_[i]->z_stride != 0 && fb_address == vfbs_[i]->z_address) {
-				// If it's clearing it, most likely it just needs more video memory.
-				// Technically it could write something interesting and the other might not clear, but that's not likely.
-				if (!gstate.isModeClear() || !gstate.isClearModeColorMask() || !gstate.isClearModeAlphaMask()) {
-					if (fb_address != z_address && vfbs_[i]->fb_address != vfbs_[i]->z_address) {
-						WARN_LOG_REPORT(SCEGE, "FBO created from existing depthbuffer as color, %08x/%08x and %08x/%08x", fb_address, z_address, vfbs_[i]->fb_address, vfbs_[i]->z_address);
-					}
-				}
-			} else if (z_stride != 0 && z_address == vfbs_[i]->fb_address) {
-				// If it's clearing it, then it's probably just the reverse of the above case.
-				if (writingDepth) {
-					WARN_LOG_REPORT(SCEGE, "FBO using existing buffer as depthbuffer, %08x/%08x and %08x/%08x", fb_address, z_address, vfbs_[i]->fb_address, vfbs_[i]->z_address);
-				}
-			} else if (vfbs_[i]->z_stride != 0 && z_address == vfbs_[i]->z_address && fb_address != vfbs_[i]->fb_address && !sharingReported) {
-				// This happens a lot, but virtually always it's cleared.
-				// It's possible the other might not clear, but when every game is reported it's not useful.
-				if (writingDepth) {
-					WARN_LOG_REPORT(SCEGE, "FBO reusing depthbuffer, %08x/%08x and %08x/%08x", fb_address, z_address, vfbs_[i]->fb_address, vfbs_[i]->z_address);
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 					sharingReported = true;
 				}
 			}
@@ -713,29 +541,17 @@ void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
 		vfb->last_frame_render = gpuStats.numFlips;
 		frameLastFramebufUsed_ = gpuStats.numFlips;
 		vfb->dirtyAfterDisplay = true;
-<<<<<<< HEAD
 		if ((skipDrawReason & SKIPDRAW_SKIPFRAME) == 0)
-=======
-		if ((gstate_c.skipDrawReason & SKIPDRAW_SKIPFRAME) == 0)
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 			vfb->reallyDirtyAfterDisplay = true;
 
 		VirtualFramebuffer *prev = currentRenderVfb_;
 		currentRenderVfb_ = vfb;
-<<<<<<< HEAD
 		NotifyRenderFramebufferSwitched(prev, vfb, params.isClearingDepth);
-=======
-		NotifyRenderFramebufferSwitched(prev, vfb);
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 	} else {
 		vfb->last_frame_render = gpuStats.numFlips;
 		frameLastFramebufUsed_ = gpuStats.numFlips;
 		vfb->dirtyAfterDisplay = true;
-<<<<<<< HEAD
 		if ((skipDrawReason & SKIPDRAW_SKIPFRAME) == 0)
-=======
-		if ((gstate_c.skipDrawReason & SKIPDRAW_SKIPFRAME) == 0)
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 			vfb->reallyDirtyAfterDisplay = true;
 
 		NotifyRenderFramebufferUpdated(vfb, vfbFormatChanged);
@@ -745,10 +561,7 @@ void FramebufferManagerCommon::DoSetRenderFrameBuffer() {
 	gstate_c.curRTHeight = vfb->height;
 	gstate_c.curRTRenderWidth = vfb->renderWidth;
 	gstate_c.curRTRenderHeight = vfb->renderHeight;
-<<<<<<< HEAD
 	return vfb;
-=======
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 }
 
 void FramebufferManagerCommon::UpdateFromMemory(u32 addr, int size, bool safe) {
@@ -760,11 +573,7 @@ void FramebufferManagerCommon::UpdateFromMemory(u32 addr, int size, bool safe) {
 		// TODO: Deleting the FBO is a heavy hammer solution, so let's only do it if it'd help.
 		if (!Memory::IsValidAddress(displayFramebufPtr_))
 			return;
-<<<<<<< HEAD
         if (!g_Config.bRefreshDrawingHackb){
-=======
-
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 		for (size_t i = 0; i < vfbs_.size(); ++i) {
 			VirtualFramebuffer *vfb = vfbs_[i];
 			if (MaskedEqual(vfb->fb_address, addr)) {
@@ -778,11 +587,7 @@ void FramebufferManagerCommon::UpdateFromMemory(u32 addr, int size, bool safe) {
 						fmt = displayFormat_;
 					}
 					DrawPixels(vfb, 0, 0, Memory::GetPointer(addr | 0x04000000), fmt, vfb->fb_stride, vfb->width, vfb->height);
-<<<<<<< HEAD
 					SetColorUpdated(vfb, gstate_c.skipDrawReason);
-=======
-					SetColorUpdated(vfb);
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 				} else {
 					INFO_LOG(SCEGE, "Invalidating FBO for %08x (%i x %i x %i)", vfb->fb_address, vfb->width, vfb->height, vfb->format);
 					DestroyFramebuf(vfb);
@@ -792,18 +597,11 @@ void FramebufferManagerCommon::UpdateFromMemory(u32 addr, int size, bool safe) {
 		}
 
 		RebindFramebuffer();
-<<<<<<< HEAD
         }
 	}
 }
 
 bool FramebufferManagerCommon::NotifyFramebufferCopy(u32 src, u32 dst, int size, bool isMemset, u32 skipDrawReason) {
-=======
-	}
-}
-
-bool FramebufferManagerCommon::NotifyFramebufferCopy(u32 src, u32 dst, int size, bool isMemset) {
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 	if (updateVRAM_ || size == 0) {
 		return false;
 	}
@@ -846,14 +644,11 @@ bool FramebufferManagerCommon::NotifyFramebufferCopy(u32 src, u32 dst, int size,
 				srcBuffer = vfb;
 				srcY = yOffset;
 				srcH = size == vfb_byteWidth ? 1 : std::min((u32)size / vfb_byteStride, (u32)vfb->height);
-<<<<<<< HEAD
 			} else if ((offset % vfb_byteStride) == 0 && size == vfb->fb_stride && yOffset < srcY) {
 				// Valkyrie Profile reads 512 bytes at a time, rather than 2048.  So, let's whitelist fb_stride also.
 				srcBuffer = vfb;
 				srcY = yOffset;
 				srcH = 1;
-=======
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 			}
 		}
 	}
@@ -882,11 +677,7 @@ bool FramebufferManagerCommon::NotifyFramebufferCopy(u32 src, u32 dst, int size,
 			// Just do the blit!
 			if (g_Config.bBlockTransferGPU) {
 				BlitFramebuffer(dstBuffer, 0, dstY, srcBuffer, 0, srcY, srcBuffer->width, srcH, 0);
-<<<<<<< HEAD
 				SetColorUpdated(dstBuffer, skipDrawReason);
-=======
-				SetColorUpdated(dstBuffer);
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 				RebindFramebuffer();
 			}
 		}
@@ -897,11 +688,7 @@ bool FramebufferManagerCommon::NotifyFramebufferCopy(u32 src, u32 dst, int size,
 			FlushBeforeCopy();
 			const u8 *srcBase = Memory::GetPointerUnchecked(src);
 			DrawPixels(dstBuffer, 0, dstY, srcBase, dstBuffer->format, dstBuffer->fb_stride, dstBuffer->width, dstH);
-<<<<<<< HEAD
 			SetColorUpdated(dstBuffer, skipDrawReason);
-=======
-			SetColorUpdated(dstBuffer);
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 			RebindFramebuffer();
 			// This is a memcpy, let's still copy just in case.
 			return false;
@@ -940,17 +727,6 @@ void FramebufferManagerCommon::FindTransferFramebuffers(VirtualFramebuffer *&dst
 		const u32 vfb_byteStride = vfb->fb_stride * vfb_bpp;
 		const u32 vfb_byteWidth = vfb->width * vfb_bpp;
 
-<<<<<<< HEAD
-=======
-
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-         /////               THIS IS EXTREMELY NOISIE BUT CAN RESULT GOOD WITHOUT ALL THIS CHECKS AND MAY SIMPLIFY   MAY RESULT A DEFORMED FB////////////////
-
-
-
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 		// These heuristics are a bit annoying.
 		// The goal is to avoid using GPU block transfers for things that ought to be memory.
 		// Maybe we should even check for textures at these places instead?
@@ -961,7 +737,6 @@ void FramebufferManagerCommon::FindTransferFramebuffers(VirtualFramebuffer *&dst
 			const u32 yOffset = byteOffset / byteStride;
 			// Some games use mismatching bitdepths.  But make sure the stride matches.
 			// If it doesn't, generally this means we detected the framebuffer with too large a height.
-<<<<<<< HEAD
 			bool match = yOffset < dstYOffset;
 			if (match && vfb_byteStride != byteStride) {
 				// Grand Knights History copies with a mismatching stride but a full line at a time.
@@ -1004,50 +779,6 @@ void FramebufferManagerCommon::FindTransferFramebuffers(VirtualFramebuffer *&dst
 				srcBuffer = vfb;
 			}
 		}
-=======
-	//		bool match = yOffset < dstYOffset;
-		//	if (match && vfb_byteStride != byteStride) {
-				// Grand Knights History copies with a mismatching stride but a full line at a time.
-				// Makes it hard to detect the wrong transfers in e.g. God of War.
-		//		if (width != dstStride || (byteStride * height != vfb_byteStride && byteStride * height != vfb_byteWidth)) {
-		//			match = false;
-		//		} else {
-		//			dstWidth = byteStride * height / vfb_bpp;
-		//			dstHeight = 1;
-		//		}
-		//	} else if (match) {
-		//		dstWidth = width;
-		//		dstHeight = height;
-		//	}
-		//	if (match) {
-				dstYOffset = yOffset;
-				dstXOffset = (byteOffset / bpp) % dstStride;
-				dstBuffer = vfb;
-		//	}
-	//	}
-	//	if (vfb_address <= srcBasePtr && srcBasePtr < vfb_address + vfb_size) {
-	//		const u32 byteOffset = srcBasePtr - vfb_address;
-	//		const u32 byteStride = srcStride * bpp;
-	//		const u32 yOffset = byteOffset / byteStride;
-	//		bool match = yOffset < srcYOffset;
-	//		if (match && vfb_byteStride != byteStride) {
-	//			if (width != srcStride || (byteStride * height != vfb_byteStride && byteStride * height != vfb_byteWidth)) {
-	//				match = false;
-	//			} else {
-	//				srcWidth = byteStride * height / vfb_bpp;
-	//				srcHeight = 1;
-	//			}
-	//		} else if (match) {
-	//			srcWidth = width;
-	//			srcHeight = height;
-	//		}
-	//		if (match) {
-	//			srcYOffset = yOffset;
-	//			srcXOffset = (byteOffset / bpp) % srcStride;
-	//			srcBuffer = vfb;
-	//		}
-	//	}
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 	}
 
 	if (dstYOffset != (u32)-1) {
@@ -1059,9 +790,6 @@ void FramebufferManagerCommon::FindTransferFramebuffers(VirtualFramebuffer *&dst
 		srcX += srcXOffset;
 	}
 }
-
-<<<<<<< HEAD
-
 void FramebufferManagerCommon::NotifyVideoUpload(u32 addr, int size, int width, GEBufferFormat fmt) {
     // Note: UpdateFromMemory() is still called later.
     // This is a special case where we have extra information prior to the invalidation.
@@ -1088,12 +816,7 @@ void FramebufferManagerCommon::NotifyVideoUpload(u32 addr, int size, int width, 
         }
     }
 }
-
-
 bool FramebufferManagerCommon::NotifyBlockTransferBefore(u32 dstBasePtr, int dstStride, int dstX, int dstY, u32 srcBasePtr, int srcStride, int srcX, int srcY, int width, int height, int bpp, u32 skipDrawReason) {
-=======
-bool FramebufferManagerCommon::NotifyBlockTransferBefore(u32 dstBasePtr, int dstStride, int dstX, int dstY, u32 srcBasePtr, int srcStride, int srcX, int srcY, int width, int height, int bpp) {
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 	if (!useBufferedRendering_ || updateVRAM_) {
 		return false;
 	}
@@ -1119,11 +842,7 @@ bool FramebufferManagerCommon::NotifyBlockTransferBefore(u32 dstBasePtr, int dst
 					FlushBeforeCopy();
 					BlitFramebuffer(dstBuffer, dstX, dstY, srcBuffer, srcX, srcY, dstWidth, dstHeight, bpp);
 					RebindFramebuffer();
-<<<<<<< HEAD
 					SetColorUpdated(dstBuffer, skipDrawReason);
-=======
-					SetColorUpdated(dstBuffer);
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 					return true;
 				}
 			} else {
@@ -1139,11 +858,7 @@ bool FramebufferManagerCommon::NotifyBlockTransferBefore(u32 dstBasePtr, int dst
 				FlushBeforeCopy();
 				BlitFramebuffer(dstBuffer, dstX, dstY, srcBuffer, srcX, srcY, dstWidth, dstHeight, bpp);
 				RebindFramebuffer();
-<<<<<<< HEAD
 				SetColorUpdated(dstBuffer, skipDrawReason);
-=======
-				SetColorUpdated(dstBuffer);
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 				return true;  // No need to actually do the memory copy behind, probably.
 			}
 		}
@@ -1157,18 +872,12 @@ bool FramebufferManagerCommon::NotifyBlockTransferBefore(u32 dstBasePtr, int dst
 		if (g_Config.bBlockTransferGPU && !srcBuffer->memoryUpdated) {
 			const int srcBpp = srcBuffer->format == GE_FORMAT_8888 ? 4 : 2;
 			const float srcXFactor = (float)bpp / srcBpp;
-<<<<<<< HEAD
 			const bool tooTall = srcY + srcHeight > srcBuffer->bufferHeight;
 			if (srcHeight <= 0 || (tooTall && srcY != 0)) {
 				WARN_LOG_ONCE(btdheight, G3D, "Block transfer download %08x -> %08x skipped, %d+%d is taller than %d", srcBasePtr, dstBasePtr, srcY, srcHeight, srcBuffer->bufferHeight);
 			} else {
 				if (tooTall)
 					WARN_LOG_ONCE(btdheight, G3D, "Block transfer download %08x -> %08x dangerous, %d+%d is taller than %d", srcBasePtr, dstBasePtr, srcY, srcHeight, srcBuffer->bufferHeight);
-=======
-			if (srcHeight <= 0 || srcY + srcHeight > srcBuffer->bufferHeight) {
-				WARN_LOG_ONCE(btdheight, G3D, "Block transfer download %08x -> %08x skipped, %d+%d is taller than %d", srcBasePtr, dstBasePtr, srcY, srcHeight, srcBuffer->bufferHeight);
-			} else {
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 				ReadFramebufferToMemory(srcBuffer, true, static_cast<int>(srcX * srcXFactor), srcY, static_cast<int>(srcWidth * srcXFactor), srcHeight);
 			}
 		}
@@ -1178,11 +887,7 @@ bool FramebufferManagerCommon::NotifyBlockTransferBefore(u32 dstBasePtr, int dst
 	}
 }
 
-<<<<<<< HEAD
 void FramebufferManagerCommon::NotifyBlockTransferAfter(u32 dstBasePtr, int dstStride, int dstX, int dstY, u32 srcBasePtr, int srcStride, int srcX, int srcY, int width, int height, int bpp, u32 skipDrawReason) {
-=======
-void FramebufferManagerCommon::NotifyBlockTransferAfter(u32 dstBasePtr, int dstStride, int dstX, int dstY, u32 srcBasePtr, int srcStride, int srcX, int srcY, int width, int height, int bpp) {
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 	// A few games use this INSTEAD of actually drawing the video image to the screen, they just blast it to
 	// the backbuffer. Detect this and have the framebuffermanager draw the pixels.
 
@@ -1218,17 +923,12 @@ void FramebufferManagerCommon::NotifyBlockTransferAfter(u32 dstBasePtr, int dstS
 				int dstBpp = dstBuffer->format == GE_FORMAT_8888 ? 4 : 2;
 				float dstXFactor = (float)bpp / dstBpp;
 				DrawPixels(dstBuffer, static_cast<int>(dstX * dstXFactor), dstY, srcBase, dstBuffer->format, static_cast<int>(srcStride * dstXFactor), static_cast<int>(dstWidth * dstXFactor), dstHeight);
-<<<<<<< HEAD
 				SetColorUpdated(dstBuffer, skipDrawReason);
-=======
-				SetColorUpdated(dstBuffer);
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2
 				RebindFramebuffer();
 			}
 		}
 	}
 }
-<<<<<<< HEAD
 
 void FramebufferManagerCommon::SetRenderSize(VirtualFramebuffer *vfb) {
 	float renderWidthFactor = (float)PSP_CoreParameter().renderWidth / 480.0f;
@@ -1245,7 +945,9 @@ void FramebufferManagerCommon::SetRenderSize(VirtualFramebuffer *vfb) {
 		force1x = vfb->bufferWidth < 480 || vfb->bufferHeight < 272;
 		break;
 	}
-
+    if (hackForce04154000Download_ && vfb->fb_address == 0x00154000) {
+            force1x = true;
+        	}
 	if (force1x && g_Config.iInternalResolution != 1) {
 		vfb->renderWidth = vfb->bufferWidth;
 		vfb->renderHeight = vfb->bufferHeight;
@@ -1255,6 +957,13 @@ void FramebufferManagerCommon::SetRenderSize(VirtualFramebuffer *vfb) {
 		vfb->renderHeight = (u16)(vfb->bufferHeight * renderHeightFactor);
 	}
 }
+void FramebufferManagerCommon::SetSafeSize(u16 w, u16 h) {
+    VirtualFramebuffer *vfb = currentRenderVfb_;
+    	if (vfb) {
+            vfb->safeWidth = std::max(vfb->safeWidth, w);
+        		vfb->safeHeight = std::max(vfb->safeHeight, h);
+        }
+    }
 
 void FramebufferManagerCommon::UpdateFramebufUsage(VirtualFramebuffer *vfb) {
 	auto checkFlag = [&](u16 flag, int last_frame) {
@@ -1271,5 +980,3 @@ void FramebufferManagerCommon::UpdateFramebufUsage(VirtualFramebuffer *vfb) {
 	checkFlag(FB_USAGE_TEXTURE, vfb->last_frame_used);
 	checkFlag(FB_USAGE_RENDERTARGET, vfb->last_frame_render);
 }
-=======
->>>>>>> 63c6f00de0562ceae061dcd71caa7b575da4f1b2

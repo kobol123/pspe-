@@ -126,7 +126,7 @@ void Init();
 void Shutdown();
 void DoState(PointerWrap &p);
 void Clear();
-
+bool IsActive();
 class MemoryInitedLock
 {
 public:

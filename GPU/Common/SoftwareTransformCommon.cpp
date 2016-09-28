@@ -83,15 +83,15 @@ static void RotateUVThrough(TransformedVertex v[4]) {
 
 // Clears on the PSP are best done by drawing a series of vertical strips
 // in clear mode. This tries to detect that.
-static bool IsReallyAClear(const TransformedVertex *transformed, int numVerts) {
+static bool IsReallyAClear(const TransformedVertex *transformed, int numVerts, float x2, float y2) {
 	if (transformed[0].x != 0.0f || transformed[0].y != 0.0f)
 		return false;
 
 	u32 matchcolor = transformed[0].color0_32;
 	float matchz = transformed[0].z;
 
-	int bufW = gstate_c.curRTWidth;
-	int bufH = gstate_c.curRTHeight;
+	//int bufW = gstate_c.curRTWidth;
+	//int bufH = gstate_c.curRTHeight;
 
 	float prevX = 0.0f;
 	for (int i = 1; i < numVerts; i++) {
@@ -100,13 +100,15 @@ static bool IsReallyAClear(const TransformedVertex *transformed, int numVerts) {
 
 		if ((i & 1) == 0) {
 			// Top left of a rectangle
-			if (transformed[i].y != 0)
+			if (transformed[i].y != 0.0f)
 				return false;
 			if (i > 0 && transformed[i].x != transformed[i - 1].x)
 				return false;
 		} else {
+            if (transformed[i].color0_32 != matchcolor || transformed[i].z != matchz)
+                return false;
 			// Bottom right
-			if (transformed[i].y != bufH)
+			if (transformed[i].y < y2)
 				return false;
 			if (transformed[i].x <= transformed[i - 1].x)
 				return false;
@@ -114,7 +116,7 @@ static bool IsReallyAClear(const TransformedVertex *transformed, int numVerts) {
 	}
 
 	// The last vertical strip often extends outside the drawing area.
-	if (transformed[numVerts - 1].x < bufW)
+	if (transformed[numVerts - 1].x < x2)
 		return false;
 
 	return true;
@@ -388,7 +390,13 @@ void SoftwareTransform(
 	// An alternative option is to simply ditch all the verts except the first and last to create a single
 	// rectangle out of many. Quite a small optimization though.
 	// Experiment: Disable on PowerVR (see issue #6290)
-	if (maxIndex > 1 && gstate.isModeClear() && prim == GE_PRIM_RECTANGLES && IsReallyAClear(transformed, maxIndex) && gl_extensions.gpuVendor != GPU_VENDOR_POWERVR) {
+    bool reallyAClear = false;
+    	if (maxIndex > 1 && prim == GE_PRIM_RECTANGLES && gstate.isModeClear()) {
+        		int scissorX2 = gstate.getScissorX2() + 1;
+        		int scissorY2 = gstate.getScissorY2() + 1;
+        		reallyAClear = IsReallyAClear(transformed, maxIndex, scissorX2, scissorY2);
+        	}
+    	if (reallyAClear && gl_extensions.gpuVendor != GPU_VENDOR_POWERVR) {
 		result->color = transformed[0].color0_32;
 		result->depth = transformed[0].z;
 		result->action = SW_CLEAR;
