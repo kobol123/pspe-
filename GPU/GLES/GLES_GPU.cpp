@@ -1249,43 +1249,45 @@ void GLES_GPU::Execute_ViewMtxData(u32 op, u32 diff) {
 }
 
 void GLES_GPU::Execute_ProjMtxNum(u32 op, u32 diff) {
-	// This is almost always followed by GE_CMD_PROJMATRIXDATA.
-	const u32_le *src = (const u32_le *)Memory::GetPointerUnchecked(currentList->pc + 4);
-	u32 *dst = (u32 *)(gstate.projMatrix + (op & 0xF));
-	const int end = 16 - (op & 0xF);
-	int i = 0;
-
-	while ((src[i] >> 24) == GE_CMD_PROJMATRIXDATA) {
-		const u32 newVal = src[i] << 8;
-		if (dst[i] != newVal) {
-			Flush();
-			dst[i] = newVal;
-			shaderManager_->DirtyUniform(DIRTY_PROJMATRIX);
-		}
-		if (++i >= end) {
-			break;
-		}
-	}
-
-	const int count = i;
-	gstate.projmtxnum = (GE_CMD_PROJMATRIXNUMBER << 24) | ((op + count) & 0xF);
-
-	// Skip over the loaded data, it's done now.
-	UpdatePC(currentList->pc, currentList->pc + count * 4);
-	currentList->pc += count * 4;
+    // This is almost always followed by GE_CMD_PROJMATRIXDATA.
+    const u32_le *src = (const u32_le *)Memory::GetPointerUnchecked(currentList->pc + 4);
+    u32 *dst = (u32 *)(gstate.projMatrix + (op & 0xF));
+    const int end = 16 - (op & 0xF);
+    int i = 0;
+    
+    while ((src[i] >> 24) == GE_CMD_PROJMATRIXDATA) {
+        const u32 newVal = src[i] << 8;
+        if (dst[i] != newVal) {
+            Flush();
+            dst[i] = newVal;
+            shaderManager_->DirtyUniform(DIRTY_PROJMATRIX);
+        }
+        if (++i >= end) {
+            break;
+        }
+    }
+    
+    const int count = i;
+    gstate.projmtxnum = (GE_CMD_PROJMATRIXNUMBER << 24) | ((op + count) & 0x1F);
+    
+    // Skip over the loaded data, it's done now.
+    UpdatePC(currentList->pc, currentList->pc + count * 4);
+    currentList->pc += count * 4;
 }
 
 void GLES_GPU::Execute_ProjMtxData(u32 op, u32 diff) {
-	// Note: it's uncommon to get here now, see above.
-	int num = gstate.projmtxnum & 0xF;
-	u32 newVal = op << 8;
-	if (newVal != ((const u32 *)gstate.projMatrix)[num]) {
-		Flush();
-		((u32 *)gstate.projMatrix)[num] = newVal;
-		shaderManager_->DirtyUniform(DIRTY_PROJMATRIX);
-	}
-	num++;
-	gstate.projmtxnum = (GE_CMD_PROJMATRIXNUMBER << 24) | (num & 0xF);
+    // Note: it's uncommon to get here now, see above.
+    int num = gstate.projmtxnum & 0x1F;
+    u32 newVal = op << 8;
+    if (num < 0x10 && newVal != ((const u32 *)gstate.projMatrix)[num]) {
+        Flush();
+        ((u32 *)gstate.projMatrix)[num] = newVal;
+        shaderManager_->DirtyUniform(DIRTY_PROJMATRIX);
+    }
+    num++;
+    ///gstate.projmtxnum = (GE_CMD_PROJMATRIXNUMBER << 24) | (num & 0xF);
+    if (num <= 16)
+        gstate.projmtxnum = (GE_CMD_PROJMATRIXNUMBER << 24) | (num & 0xF);
 }
 
 void GLES_GPU::Execute_TgenMtxNum(u32 op, u32 diff) {
